@@ -6,7 +6,7 @@ import { converter } from "culori";
 import { tailwindColors } from "./tailwind-colors.js";
 
 const toOklch = converter("oklch");
-const outputDir = path.resolve(process.cwd(), "dist");
+const outputDir = path.resolve(process.cwd(), "dist", "generated");
 
 const supportedColorKeys = [
   "primary",
@@ -55,6 +55,7 @@ const brandConfig = await loadBrandConfig();
 const colors = resolveColorTokens(brandConfig);
 
 fs.mkdirSync(outputDir, { recursive: true });
+removeLegacyGeneratedFiles();
 
 generateCssVariables();
 generateTypeScriptTokens();
@@ -215,6 +216,15 @@ function roundComponent(value: number | undefined, precision: number) {
   }
 
   return Number(value.toFixed(precision));
+}
+
+function removeLegacyGeneratedFiles() {
+  const legacyOutputDir = path.resolve(process.cwd(), "dist");
+  const legacyFiles = ["tokens.css", "tokens.ts", "tokens.json", "tailwind-preset.ts"];
+
+  for (const legacyFile of legacyFiles) {
+    fs.rmSync(path.join(legacyOutputDir, legacyFile), { force: true });
+  }
 }
 
 function generateCssVariables() {

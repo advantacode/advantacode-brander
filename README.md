@@ -101,15 +101,12 @@ DANGER_COLOR=red-500
 Running the CLI generates multiple outputs.
 
 ```
-tokens/
+dist/
+  generated/
    tokens.css
    tokens.ts
    tokens.json
-
-framework/
-   tailwind.preset.ts
-   quasar.variables.scss
-   figma.tokens.json
+   tailwind-preset.ts
 ```
 
 ---
@@ -153,13 +150,13 @@ export const tokens = {
 Generated preset:
 
 ```
-framework/tailwind.preset.ts
+dist/generated/tailwind-preset.ts
 ```
 
 Usage:
 
 ```ts
-import preset from "./framework/tailwind.preset";
+import preset from "./dist/generated/tailwind-preset";
 
 export default {
   presets: [preset]
@@ -226,15 +223,12 @@ my-app
 ├─ brand.config.ts
 ├─ .env
 │
-├─ tokens
-│  ├─ tokens.css
-│  ├─ tokens.ts
-│  └─ tokens.json
-│
-├─ framework
-│  ├─ tailwind.preset.ts
-│  ├─ quasar.variables.scss
-│  └─ figma.tokens.json
+├─ dist
+│  └─ generated
+│     ├─ tokens.css
+│     ├─ tokens.ts
+│     ├─ tokens.json
+│     └─ tailwind-preset.ts
 │
 └─ src
    └─ assets
