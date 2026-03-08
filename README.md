@@ -46,6 +46,22 @@ Run:
 advantacode-brander
 ```
 
+CLI options:
+
+```
+advantacode-brander --help
+advantacode-brander --out src/tokens
+advantacode-brander --format css,tailwind,figma
+advantacode-brander --theme dark
+```
+
+Supported flags:
+
+* `--out <dir>` writes generated files to a custom folder instead of `dist/generated`
+* `--format <list>` limits output to specific formats: `all`, `css`, `json`, `typescript` or `ts`, `scss`, `tailwind`, `bootstrap`, `figma`
+* `--theme <value>` limits theme CSS output to `light`, `dark`, or `both`
+* `--help`, `-h` prints the CLI help text
+
 ---
 
 # Configuration
@@ -102,7 +118,7 @@ DANGER_COLOR=red-500
 
 # Generated Outputs
 
-Running the CLI generates multiple outputs.
+Running the CLI with no flags generates all formats into `dist/generated` and writes both light and dark theme CSS.
 
 ```
 dist/

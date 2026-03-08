@@ -33,4 +33,5 @@ export function writeFigmaAdapter(outputDir: string, tokenModel: TokenModel) {
 
   fs.mkdirSync(adaptersDir, { recursive: true });
   fs.writeFileSync(path.join(adaptersDir, "figma.tokens.json"), JSON.stringify(figmaTokens, null, 2));
+  return ["adapters/figma.tokens.json"];
 }

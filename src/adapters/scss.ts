@@ -4,8 +4,13 @@ import { scaleSteps, type PrimitiveColorName } from "../engine/palette.js";
 import { semanticTokenNames } from "../engine/semantics.js";
 import type { TokenModel } from "../engine/themes.js";
 
-export function writeScssAdapter(outputDir: string, tokenModel: TokenModel) {
+export function writeScssArtifacts(
+  outputDir: string,
+  tokenModel: TokenModel,
+  options: { includeTokensScss: boolean; includeBootstrapAdapter: boolean }
+) {
   const adaptersDir = path.join(outputDir, "adapters");
+  const writtenArtifacts: string[] = [];
   const tokensScss = renderTokensScss(tokenModel);
   const bootstrapScss = `@use "../tokens.scss" as tokens;
 
@@ -22,8 +27,18 @@ $card-bg: tokens.$ac-surface;
 `;
 
   fs.mkdirSync(adaptersDir, { recursive: true });
-  fs.writeFileSync(path.join(outputDir, "tokens.scss"), tokensScss);
-  fs.writeFileSync(path.join(adaptersDir, "bootstrap.variables.scss"), bootstrapScss);
+
+  if (options.includeTokensScss || options.includeBootstrapAdapter) {
+    fs.writeFileSync(path.join(outputDir, "tokens.scss"), tokensScss);
+    writtenArtifacts.push("tokens.scss");
+  }
+
+  if (options.includeBootstrapAdapter) {
+    fs.writeFileSync(path.join(adaptersDir, "bootstrap.variables.scss"), bootstrapScss);
+    writtenArtifacts.push("adapters/bootstrap.variables.scss");
+  }
+
+  return writtenArtifacts;
 }
 
 function renderTokensScss(tokenModel: TokenModel) {

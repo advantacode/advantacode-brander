@@ -20,4 +20,5 @@ export function writeTailwindAdapter(outputDir: string, tokenModel: TokenModel) 
   preset += "      }\n    }\n  }\n};\n";
 
   fs.writeFileSync(path.join(adaptersDir, "tailwind.preset.ts"), preset);
+  return ["adapters/tailwind.preset.ts"];
 }

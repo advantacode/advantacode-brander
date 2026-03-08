@@ -10,7 +10,12 @@ export type GeneratedMetadata = {
   artifacts: string[];
 };
 
-export function writeJsonArtifacts(outputDir: string, tokenModel: TokenModel, metadata: GeneratedMetadata) {
+export function writeTokenModelJson(outputDir: string, tokenModel: TokenModel) {
   fs.writeFileSync(path.join(outputDir, "tokens.json"), JSON.stringify(tokenModel, null, 2));
+  return ["tokens.json"];
+}
+
+export function writeMetadataJson(outputDir: string, metadata: GeneratedMetadata) {
   fs.writeFileSync(path.join(outputDir, "metadata.json"), JSON.stringify(metadata, null, 2));
+  return ["metadata.json"];
 }
