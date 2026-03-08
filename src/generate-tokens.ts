@@ -1,41 +1,106 @@
 import fs from "fs";
 import path from "path";
-import { pathToFileURL } from "url";
+import { pathToFileURL, fileURLToPath } from "url";
 import { config as loadDotEnv } from "dotenv";
-import { writeCssArtifacts } from "./adapters/css.js";
+import { writeCssArtifacts, type ThemeSelection } from "./adapters/css.js";
 import { writeFigmaAdapter } from "./adapters/figma.js";
-import { writeJsonArtifacts, type GeneratedMetadata } from "./adapters/json.js";
-import { writeScssAdapter } from "./adapters/scss.js";
+import { writeMetadataJson, writeTokenModelJson, type GeneratedMetadata } from "./adapters/json.js";
+import { writeScssArtifacts } from "./adapters/scss.js";
 import { writeTailwindAdapter } from "./adapters/tailwind.js";
 import { writeTypeScriptArtifacts } from "./adapters/typescript.js";
 import { baseColorNames, resolveBaseColors, type PartialBaseColors } from "./engine/color-parser.js";
 import { createTokenModel } from "./engine/themes.js";
 
-const outputDir = path.resolve(process.cwd(), "dist", "generated");
+export const supportedFormats = [
+  "all",
+  "css",
+  "json",
+  "typescript",
+  "scss",
+  "tailwind",
+  "bootstrap",
+  "figma"
+] as const;
+
+export type OutputFormat = (typeof supportedFormats)[number];
+
+export type GenerationOptions = {
+  outputDir?: string;
+  formats?: OutputFormat[];
+  theme?: ThemeSelection;
+};
 
 type BrandConfig = {
   name?: string;
   colors?: PartialBaseColors;
 };
 
-loadDotEnv({ path: path.resolve(process.cwd(), ".env"), quiet: true });
+const defaultOutputDir = path.resolve(process.cwd(), "dist", "generated");
 
-const brandConfig = await loadBrandConfig();
-const baseColors = resolveBaseColors(brandConfig.colors ?? {});
-const tokenModel = createTokenModel(baseColors);
-const metadata = createGeneratedMetadata();
+export async function generateTokens(options: GenerationOptions = {}) {
+  const outputDir = options.outputDir ? path.resolve(process.cwd(), options.outputDir) : defaultOutputDir;
+  const theme = options.theme ?? "both";
+  const formats = resolveFormats(options.formats);
 
-fs.mkdirSync(outputDir, { recursive: true });
-removeLegacyGeneratedFiles();
+  loadDotEnv({ path: path.resolve(process.cwd(), ".env"), quiet: true });
 
-writeCssArtifacts(outputDir, tokenModel);
-writeJsonArtifacts(outputDir, tokenModel, metadata);
-writeTypeScriptArtifacts(outputDir, tokenModel, metadata);
-writeTailwindAdapter(outputDir, tokenModel);
-writeScssAdapter(outputDir, tokenModel);
-writeFigmaAdapter(outputDir, tokenModel);
+  const brandConfig = await loadBrandConfig();
+  const baseColors = resolveBaseColors(brandConfig.colors ?? {});
+  const tokenModel = createTokenModel(baseColors);
 
-console.log("✔ AdvantaCode tokens generated!");
+  fs.mkdirSync(outputDir, { recursive: true });
+
+  if (outputDir === defaultOutputDir) {
+    removeLegacyGeneratedFiles();
+  }
+
+  removeManagedArtifacts(outputDir);
+
+  const writtenArtifacts: string[] = [];
+  const writtenAdapters: string[] = [];
+
+  if (formats.has("css")) {
+    writtenArtifacts.push(...writeCssArtifacts(outputDir, tokenModel, theme));
+  }
+
+  if (formats.has("json")) {
+    writtenArtifacts.push(...writeTokenModelJson(outputDir, tokenModel));
+  }
+
+  if (formats.has("scss") || formats.has("bootstrap")) {
+    writtenArtifacts.push(
+      ...writeScssArtifacts(outputDir, tokenModel, {
+        includeTokensScss: formats.has("scss"),
+        includeBootstrapAdapter: formats.has("bootstrap")
+      })
+    );
+  }
+
+  if (formats.has("tailwind")) {
+    writtenArtifacts.push(...writeTailwindAdapter(outputDir, tokenModel));
+    writtenAdapters.push("tailwind");
+  }
+
+  if (formats.has("bootstrap")) {
+    writtenAdapters.push("bootstrap");
+  }
+
+  if (formats.has("figma")) {
+    writtenArtifacts.push(...writeFigmaAdapter(outputDir, tokenModel));
+    writtenAdapters.push("figma");
+  }
+
+  const plannedArtifacts = [...new Set([...writtenArtifacts, ...(formats.has("typescript") ? ["tokens.ts"] : []), "metadata.json"])];
+  const metadata = createGeneratedMetadata(theme, writtenAdapters, plannedArtifacts);
+
+  if (formats.has("typescript")) {
+    writtenArtifacts.push(...writeTypeScriptArtifacts(outputDir, tokenModel, metadata));
+  }
+
+  writtenArtifacts.push(...writeMetadataJson(outputDir, metadata));
+
+  console.log(`✔ AdvantaCode tokens generated in ${path.relative(process.cwd(), outputDir) || "."}!`);
+}
 
 async function loadBrandConfig(): Promise<BrandConfig> {
   const configPath = findBrandConfigPath();
@@ -115,6 +180,32 @@ function parseBrandConfig(rawConfig: unknown, configPath: string): BrandConfig {
   return parsedConfig;
 }
 
+function resolveFormats(formats: OutputFormat[] | undefined) {
+  const resolvedFormats = new Set<Exclude<OutputFormat, "all">>();
+
+  if (!formats || formats.length === 0 || formats.includes("all")) {
+    resolvedFormats.add("css");
+    resolvedFormats.add("json");
+    resolvedFormats.add("typescript");
+    resolvedFormats.add("scss");
+    resolvedFormats.add("tailwind");
+    resolvedFormats.add("bootstrap");
+    resolvedFormats.add("figma");
+
+    return resolvedFormats;
+  }
+
+  for (const format of formats) {
+    if (format === "all") {
+      continue;
+    }
+
+    resolvedFormats.add(format);
+  }
+
+  return resolvedFormats;
+}
+
 function removeLegacyGeneratedFiles() {
   const legacyFiles = [
     path.resolve(process.cwd(), "dist", "tokens.css"),
@@ -123,8 +214,6 @@ function removeLegacyGeneratedFiles() {
     path.resolve(process.cwd(), "dist", "tokens.json"),
     path.resolve(process.cwd(), "dist", "metadata.json"),
     path.resolve(process.cwd(), "dist", "tailwind-preset.ts"),
-    path.resolve(process.cwd(), "dist", "generated", "tokens.ts"),
-    path.resolve(process.cwd(), "dist", "generated", "tokens.scss"),
     path.resolve(process.cwd(), "dist", "generated", "tailwind-preset.ts")
   ];
 
@@ -133,8 +222,31 @@ function removeLegacyGeneratedFiles() {
   }
 }
 
-function createGeneratedMetadata(): GeneratedMetadata {
-  const packageJsonPath = path.resolve(process.cwd(), "package.json");
+function removeManagedArtifacts(outputDir: string) {
+  const managedFiles = [
+    "tokens.css",
+    "tokens.json",
+    "tokens.ts",
+    "tokens.scss",
+    "metadata.json",
+    path.join("themes", "light.css"),
+    path.join("themes", "dark.css"),
+    path.join("adapters", "tailwind.preset.ts"),
+    path.join("adapters", "bootstrap.variables.scss"),
+    path.join("adapters", "figma.tokens.json")
+  ];
+
+  for (const managedFile of managedFiles) {
+    fs.rmSync(path.join(outputDir, managedFile), { force: true });
+  }
+}
+
+function createGeneratedMetadata(
+  theme: ThemeSelection,
+  adapters: string[],
+  artifacts: string[]
+): GeneratedMetadata {
+  const packageJsonPath = fileURLToPath(new URL("../package.json", import.meta.url));
   const packageVersion = fs.existsSync(packageJsonPath)
     ? ((JSON.parse(fs.readFileSync(packageJsonPath, "utf8")) as { version?: string }).version ?? "0.0.0")
     : "0.0.0";
@@ -142,8 +254,8 @@ function createGeneratedMetadata(): GeneratedMetadata {
   return {
     version: packageVersion,
     generated: new Date().toISOString(),
-    themes: ["light", "dark"],
-    adapters: ["tailwind", "bootstrap", "figma"],
-    artifacts: ["tokens.css", "tokens.scss", "tokens.ts", "tokens.json", "metadata.json"]
+    themes: theme === "both" ? ["light", "dark"] : [theme],
+    adapters,
+    artifacts
   };
 }

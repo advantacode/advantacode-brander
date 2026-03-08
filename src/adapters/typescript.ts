@@ -13,4 +13,5 @@ export type Tokens = typeof tokens;
 `;
 
   fs.writeFileSync(path.join(outputDir, "tokens.ts"), source);
+  return ["tokens.ts"];
 }
