@@ -7,5 +7,14 @@ declare module 'culori' {
         mode?: 'oklch';
     }
 
+    export interface RgbColor {
+        r: number;
+        g: number;
+        b: number;
+        alpha?: number;
+        mode?: 'rgb';
+    }
+
     export function converter(mode: 'oklch'): (value: string) => OklchColor | undefined;
+    export function converter(mode: 'rgb'): (value: string) => RgbColor | undefined;
 }

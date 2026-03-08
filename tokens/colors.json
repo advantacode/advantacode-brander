@@ -1,8 +1,0 @@
-{
-  "primary": "oklch(62% 0.15 240)",
-  "secondary": "oklch(70% 0.12 180)",
-  "accent": "oklch(75% 0.18 30)",
-  "success": "oklch(70% 0.14 145)",
-  "warning": "oklch(80% 0.16 85)",
-  "danger": "oklch(62% 0.20 25)"
-}

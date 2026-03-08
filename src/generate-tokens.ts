@@ -2,65 +2,38 @@ import fs from "fs";
 import path from "path";
 import { pathToFileURL } from "url";
 import { config as loadDotEnv } from "dotenv";
-import { converter } from "culori";
-import { tailwindColors } from "./tailwind-colors.js";
+import { writeCssArtifacts } from "./adapters/css.js";
+import { writeFigmaAdapter } from "./adapters/figma.js";
+import { writeJsonArtifacts, type GeneratedMetadata } from "./adapters/json.js";
+import { writeScssAdapter } from "./adapters/scss.js";
+import { writeTailwindAdapter } from "./adapters/tailwind.js";
+import { writeTypeScriptArtifacts } from "./adapters/typescript.js";
+import { baseColorNames, resolveBaseColors, type PartialBaseColors } from "./engine/color-parser.js";
+import { createTokenModel } from "./engine/themes.js";
 
-const toOklch = converter("oklch");
 const outputDir = path.resolve(process.cwd(), "dist", "generated");
-
-const supportedColorKeys = [
-  "primary",
-  "secondary",
-  "accent",
-  "success",
-  "warning",
-  "danger"
-] as const;
-
-type ColorKey = (typeof supportedColorKeys)[number];
-type ColorTokens = Record<ColorKey, string>;
-type PartialColorTokens = Partial<Record<ColorKey, string>>;
 
 type BrandConfig = {
   name?: string;
-  colors?: PartialColorTokens;
-};
-
-const defaultColors: ColorTokens = {
-  primary: "oklch(62% 0.15 240)",
-  secondary: "oklch(70% 0.12 180)",
-  accent: "oklch(75% 0.18 30)",
-  success: "oklch(70% 0.14 145)",
-  warning: "oklch(80% 0.16 85)",
-  danger: "oklch(62% 0.20 25)"
-};
-
-const scaleSteps: Record<string, number> = {
-  50: 0.97,
-  100: 0.93,
-  200: 0.87,
-  300: 0.80,
-  400: 0.72,
-  500: 0.65,
-  600: 0.57,
-  700: 0.49,
-  800: 0.40,
-  900: 0.32,
-  950: 0.24
+  colors?: PartialBaseColors;
 };
 
 loadDotEnv({ path: path.resolve(process.cwd(), ".env"), quiet: true });
 
 const brandConfig = await loadBrandConfig();
-const colors = resolveColorTokens(brandConfig);
+const baseColors = resolveBaseColors(brandConfig.colors ?? {});
+const tokenModel = createTokenModel(baseColors);
+const metadata = createGeneratedMetadata();
 
 fs.mkdirSync(outputDir, { recursive: true });
 removeLegacyGeneratedFiles();
 
-generateCssVariables();
-generateTypeScriptTokens();
-generateTailwindPresets();
-generatePalette();
+writeCssArtifacts(outputDir, tokenModel);
+writeJsonArtifacts(outputDir, tokenModel, metadata);
+writeTypeScriptArtifacts(outputDir, tokenModel, metadata);
+writeTailwindAdapter(outputDir, tokenModel);
+writeScssAdapter(outputDir, tokenModel);
+writeFigmaAdapter(outputDir, tokenModel);
 
 console.log("✔ AdvantaCode tokens generated!");
 
@@ -99,6 +72,7 @@ function findBrandConfigPath(): string | undefined {
 
   return undefined;
 }
+
 function parseBrandConfig(rawConfig: unknown, configPath: string): BrandConfig {
   if (typeof rawConfig !== "object" || rawConfig === null || Array.isArray(rawConfig)) {
     throw new Error(`Expected ${path.basename(configPath)} to export an object.`);
@@ -121,10 +95,10 @@ function parseBrandConfig(rawConfig: unknown, configPath: string): BrandConfig {
     }
 
     const colorEntries = Object.entries(config.colors as Record<string, unknown>);
-    const parsedColors: PartialColorTokens = {};
+    const parsedColors: PartialBaseColors = {};
 
     for (const [colorName, colorValue] of colorEntries) {
-      if (!supportedColorKeys.includes(colorName as ColorKey)) {
+      if (!baseColorNames.includes(colorName as (typeof baseColorNames)[number])) {
         throw new Error(`Unsupported color token "${colorName}" in ${path.basename(configPath)}.`);
       }
 
@@ -132,7 +106,7 @@ function parseBrandConfig(rawConfig: unknown, configPath: string): BrandConfig {
         throw new Error(`Expected color "${colorName}" in ${path.basename(configPath)} to be a string.`);
       }
 
-      parsedColors[colorName as ColorKey] = colorValue;
+      parsedColors[colorName as keyof PartialBaseColors] = colorValue;
     }
 
     parsedConfig.colors = parsedColors;
@@ -141,159 +115,35 @@ function parseBrandConfig(rawConfig: unknown, configPath: string): BrandConfig {
   return parsedConfig;
 }
 
-function resolveColorTokens(config: BrandConfig): ColorTokens {
-  const envColorOverrides: PartialColorTokens = {
-    primary: process.env.PRIMARY_COLOR,
-    secondary: process.env.SECONDARY_COLOR,
-    accent: process.env.ACCENT_COLOR,
-    success: process.env.SUCCESS_COLOR,
-    warning: process.env.WARNING_COLOR,
-    danger: process.env.DANGER_COLOR
-  };
-
-  const resolvedColors: ColorTokens = {
-    ...defaultColors,
-    ...config.colors,
-    ...stripUndefinedValues(envColorOverrides)
-  };
-
-  return normalizeColorTokens(resolvedColors);
-}
-
-function stripUndefinedValues(colors: PartialColorTokens): PartialColorTokens {
-  return Object.fromEntries(
-    Object.entries(colors).filter(([, colorValue]) => colorValue !== undefined)
-  ) as PartialColorTokens;
-}
-
-function normalizeColorTokens(colors: ColorTokens): ColorTokens {
-  return Object.fromEntries(
-    Object.entries(colors).map(([colorName, colorValue]) => [colorName, normalizeColorValue(colorName, colorValue)])
-  ) as ColorTokens;
-}
-
-function normalizeColorValue(colorName: string, colorValue: string): string {
-  const resolvedColorValue = resolveTailwindColorToken(colorValue) ?? colorValue;
-  const oklchColor = toOklch(resolvedColorValue);
-
-  if (!oklchColor) {
-    throw new Error(
-      `Unable to parse color "${colorName}" with value "${colorValue}". Use a valid CSS color, OKLCH string, or Tailwind-style token like "amber-500".`
-    );
-  }
-
-  return formatOklchColor(oklchColor);
-}
-
-function resolveTailwindColorToken(colorValue: string): string | undefined {
-  const match = colorValue.match(/^([a-z]+)-(\d{2,3})$/);
-
-  if (!match) {
-    return undefined;
-  }
-
-  const [, colorName, rawScale] = match;
-  const colorScale = Number(rawScale) as keyof (typeof tailwindColors)[keyof typeof tailwindColors];
-  const palette = tailwindColors[colorName as keyof typeof tailwindColors];
-
-  return palette?.[colorScale];
-}
-
-function formatOklchColor(color: { l?: number; c?: number; h?: number; alpha?: number }) {
-  const lightness = roundComponent(color.l, 6) ?? "none";
-  const chroma = roundComponent(color.c, 6) ?? "none";
-  const hue = roundComponent(color.h, 3) ?? "none";
-  const alpha = roundComponent(color.alpha, 3);
-
-  return alpha !== undefined && alpha < 1
-    ? `oklch(${lightness} ${chroma} ${hue} / ${alpha})`
-    : `oklch(${lightness} ${chroma} ${hue})`;
-}
-
-function roundComponent(value: number | undefined, precision: number) {
-  if (value === undefined) {
-    return undefined;
-  }
-
-  return Number(value.toFixed(precision));
-}
-
 function removeLegacyGeneratedFiles() {
-  const legacyOutputDir = path.resolve(process.cwd(), "dist");
-  const legacyFiles = ["tokens.css", "tokens.ts", "tokens.json", "tailwind-preset.ts"];
+  const legacyFiles = [
+    path.resolve(process.cwd(), "dist", "tokens.css"),
+    path.resolve(process.cwd(), "dist", "tokens.ts"),
+    path.resolve(process.cwd(), "dist", "tokens.scss"),
+    path.resolve(process.cwd(), "dist", "tokens.json"),
+    path.resolve(process.cwd(), "dist", "metadata.json"),
+    path.resolve(process.cwd(), "dist", "tailwind-preset.ts"),
+    path.resolve(process.cwd(), "dist", "generated", "tokens.ts"),
+    path.resolve(process.cwd(), "dist", "generated", "tokens.scss"),
+    path.resolve(process.cwd(), "dist", "generated", "tailwind-preset.ts")
+  ];
 
   for (const legacyFile of legacyFiles) {
-    fs.rmSync(path.join(legacyOutputDir, legacyFile), { force: true });
+    fs.rmSync(legacyFile, { force: true });
   }
 }
 
-function generateCssVariables() {
-  let css = ":root {\n";
+function createGeneratedMetadata(): GeneratedMetadata {
+  const packageJsonPath = path.resolve(process.cwd(), "package.json");
+  const packageVersion = fs.existsSync(packageJsonPath)
+    ? ((JSON.parse(fs.readFileSync(packageJsonPath, "utf8")) as { version?: string }).version ?? "0.0.0")
+    : "0.0.0";
 
-  for (const [variableName, variableValue] of Object.entries(colors)) {
-    css += `  --ac-${variableName}: ${variableValue};\n`;
-  }
-
-  css += "}\n";
-
-  fs.writeFileSync(path.join(outputDir, "tokens.css"), css);
-}
-
-function generateTypeScriptTokens() {
-  let ts = "export const tokens = {\n";
-
-  for (const [tokenName, tokenValue] of Object.entries(colors)) {
-    ts += `  ${tokenName}: '${tokenValue}',\n`;
-  }
-
-  ts += "} as const;\n";
-
-  fs.writeFileSync(path.join(outputDir, "tokens.ts"), ts);
-}
-
-function generateTailwindPresets() {
-  let tailwind =
-    `export default {
-        theme: {
-            extend: {
-                colors: {
-    `;
-
-  for (const tokenName of Object.keys(colors)) {
-    tailwind += `                'ac-${tokenName}': 'var(--ac-${tokenName})',\n`;
-  }
-
-  tailwind += `}
-            }
-        }
-    }
-    `;
-
-  fs.writeFileSync(path.join(outputDir, "tailwind-preset.ts"), tailwind);
-}
-
-function generateColorScale(base: string) {
-  const baseColor = toOklch(base);
-
-  if (!baseColor) {
-    throw new Error(`Unable to convert color "${base}" to oklch.`);
-  }
-
-  const scale: Record<string, string> = {};
-
-  for (const [step, lightness] of Object.entries(scaleSteps)) {
-    scale[step] = `oklch(${lightness} ${baseColor.c} ${baseColor.h})`;
-  }
-
-  return scale;
-}
-
-function generatePalette() {
-  const palette: Record<string, Record<string, string>> = {};
-
-  for (const [colorName, colorValue] of Object.entries(colors)) {
-    palette[colorName] = generateColorScale(colorValue);
-  }
-
-  fs.writeFileSync(path.join(outputDir, "tokens.json"), JSON.stringify(palette, null, 2));
+  return {
+    version: packageVersion,
+    generated: new Date().toISOString(),
+    themes: ["light", "dark"],
+    adapters: ["tailwind", "bootstrap", "figma"],
+    artifacts: ["tokens.css", "tokens.scss", "tokens.ts", "tokens.json", "metadata.json"]
+  };
 }

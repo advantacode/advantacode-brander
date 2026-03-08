@@ -86,6 +86,7 @@ muted
 success
 warning
 danger
+info
 ```
 
 Example output:
@@ -222,9 +223,6 @@ advantacode-brander
 │  ├─ generate-tokens.ts
 │  └─ culori.d.ts
 │
-├─ tokens
-│  └─ colors.json
-│
 ├─ dist
 │
 ├─ brand.config.ts
@@ -266,21 +264,24 @@ Type definitions for Culori.
 # Token Source Files
 
 ```
-tokens/colors.json
+brand.config.ts
 ```
 
-Defines base color inputs.
+Defines the user-provided color inputs.
 
 Example:
 
-```
-{
-  "primary": "#f59e0b",
-  "secondary": "#3f3f46"
-}
+```ts
+export default {
+  colors: {
+    primary: "amber-500",
+    secondary: "zinc-700",
+    info: "sky-500"
+  }
+};
 ```
 
-This file is used by the generator to build the palette.
+Environment variables can override these values at runtime.
 
 ---
 
@@ -289,14 +290,20 @@ This file is used by the generator to build the palette.
 The generator produces multiple outputs.
 
 ```
-tokens/
+dist/generated/
    tokens.css
+   tokens.scss
    tokens.ts
    tokens.json
+   metadata.json
 
-framework/
+dist/generated/themes/
+   light.css
+   dark.css
+
+dist/generated/adapters/
    tailwind.preset.ts
-   quasar.variables.scss
+   bootstrap.variables.scss
    figma.tokens.json
 ```
 
@@ -323,7 +330,7 @@ These tokens can be used directly in CSS.
 The generator produces a Tailwind preset.
 
 ```
-framework/tailwind.preset.ts
+dist/generated/adapters/tailwind.preset.ts
 ```
 
 Example:
@@ -342,21 +349,25 @@ export default {
 
 ---
 
-# Quasar Integration
+# SCSS / Bootstrap Integration
 
-Quasar uses SCSS variables.
+SCSS-based frameworks can use native Sass variables.
 
 Generated file:
 
 ```
-framework/quasar.variables.scss
+dist/generated/tokens.scss
+dist/generated/adapters/bootstrap.variables.scss
 ```
 
 Example:
 
 ```
-$primary: var(--ac-primary);
-$secondary: var(--ac-secondary);
+@use "../tokens.scss" as tokens;
+
+$primary: tokens.$ac-primary;
+$secondary: tokens.$ac-secondary;
+$info: tokens.$ac-info;
 ```
 
 ---
@@ -366,7 +377,7 @@ $secondary: var(--ac-secondary);
 Design tokens can be exported to JSON for use in design tools.
 
 ```
-framework/figma.tokens.json
+dist/generated/adapters/figma.tokens.json
 ```
 
 Example:

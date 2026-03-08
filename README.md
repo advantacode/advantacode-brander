@@ -61,7 +61,9 @@ export default {
   colors: {
     primary: process.env.PRIMARY_COLOR || "amber-500",
     secondary: process.env.SECONDARY_COLOR || "zinc-700",
+    neutral: process.env.NEUTRAL_COLOR || process.env.SECONDARY_COLOR || "zinc-700",
     accent: process.env.ACCENT_COLOR || "amber-400",
+    info: process.env.INFO_COLOR || "sky-500",
 
     success: process.env.SUCCESS_COLOR || "green-500",
     warning: process.env.WARNING_COLOR || "yellow-500",
@@ -88,7 +90,9 @@ Example:
 COMPANY_NAME=AdvantaCode
 PRIMARY_COLOR=amber-500
 SECONDARY_COLOR=zinc-700
+NEUTRAL_COLOR=zinc-700
 ACCENT_COLOR=amber-400
+INFO_COLOR=sky-500
 SUCCESS_COLOR=green-500
 WARNING_COLOR=yellow-500
 DANGER_COLOR=red-500
@@ -104,9 +108,17 @@ Running the CLI generates multiple outputs.
 dist/
   generated/
    tokens.css
+   tokens.scss
    tokens.ts
    tokens.json
-   tailwind-preset.ts
+   metadata.json
+   themes/
+     light.css
+     dark.css
+   adapters/
+     tailwind.preset.ts
+     bootstrap.variables.scss
+     figma.tokens.json
 ```
 
 ---
@@ -117,16 +129,40 @@ Example generated `tokens.css`:
 
 ```css
 :root {
-  --ac-primary: oklch(0.65 0.2 45);
-  --ac-secondary: oklch(0.57 0.05 260);
+  --ac-primary-500: oklch(0.65 0.2 45);
+  --ac-neutral-50: oklch(0.97 0.02 95);
 }
 ```
 
 Usage:
 
 ```css
-button {
-  background: var(--ac-primary);
+:root {
+  --ac-background: var(--ac-neutral-50);
+  --ac-text: var(--ac-neutral-950);
+}
+```
+
+---
+
+# Theme Tokens
+
+Example:
+
+```css
+:root {
+  --ac-background: var(--ac-neutral-50);
+  --ac-surface: var(--ac-neutral-100);
+  --ac-text: var(--ac-neutral-950);
+  --ac-border: var(--ac-neutral-200);
+  --ac-primary: var(--ac-primary-600);
+  --ac-primary-foreground: var(--ac-neutral-50);
+}
+
+[data-theme="dark"] {
+  --ac-background: var(--ac-neutral-950);
+  --ac-surface: var(--ac-neutral-900);
+  --ac-text: var(--ac-neutral-50);
 }
 ```
 
@@ -134,14 +170,45 @@ button {
 
 # TypeScript Tokens
 
-Example:
+Generated file:
+
+```
+dist/generated/tokens.ts
+```
+
+Usage:
 
 ```ts
-export const tokens = {
-  primary: "oklch(0.65 0.2 45)",
-  secondary: "oklch(0.57 0.05 260)"
-} as const;
+import { tokens, metadata } from "./dist/generated/tokens";
+
+console.log(tokens.color.semantic.light.primary.value);
+console.log(metadata.adapters);
 ```
+
+This output is intended for typed apps, scripts, and build-time tooling.
+
+---
+
+# SCSS Tokens
+
+Generated file:
+
+```
+dist/generated/tokens.scss
+```
+
+Usage:
+
+```scss
+@use "./dist/generated/tokens.scss" as tokens;
+
+.button {
+  background: tokens.$ac-primary;
+  color: tokens.$ac-primary-foreground;
+}
+```
+
+Light semantic tokens are emitted as Sass variables like `$ac-background`, and dark semantic tokens are emitted as `$ac-dark-background`.
 
 ---
 
@@ -150,13 +217,13 @@ export const tokens = {
 Generated preset:
 
 ```
-dist/generated/tailwind-preset.ts
+dist/generated/adapters/tailwind.preset.ts
 ```
 
 Usage:
 
 ```ts
-import preset from "./dist/generated/tailwind-preset";
+import preset from "./dist/generated/adapters/tailwind.preset";
 
 export default {
   presets: [preset]
@@ -173,20 +240,22 @@ border-ac-secondary
 
 ---
 
-# Quasar Integration
+# Bootstrap / SCSS Frameworks
 
 Generated file:
 
 ```
-framework/quasar.variables.scss
+dist/generated/adapters/bootstrap.variables.scss
 ```
 
 Example output:
 
 ```scss
-$primary: var(--ac-primary);
-$secondary: var(--ac-secondary);
-$accent: var(--ac-accent);
+@use "../tokens.scss" as tokens;
+
+$primary: tokens.$ac-primary;
+$secondary: tokens.$ac-secondary;
+$info: tokens.$ac-info;
 ```
 
 ---
@@ -196,7 +265,7 @@ $accent: var(--ac-accent);
 Generated:
 
 ```
-framework/figma.tokens.json
+dist/generated/adapters/figma.tokens.json
 ```
 
 Example:
@@ -215,6 +284,30 @@ This allows importing tokens into design tools.
 
 ---
 
+# Metadata
+
+Generated file:
+
+```
+dist/generated/metadata.json
+```
+
+Example:
+
+```json
+{
+  "version": "0.0.1",
+  "generated": "2026-03-08T00:00:00.000Z",
+  "themes": ["light", "dark"],
+  "adapters": ["tailwind", "bootstrap", "figma"],
+  "artifacts": ["tokens.css", "tokens.scss", "tokens.ts", "tokens.json", "metadata.json"]
+}
+```
+
+This is useful for CI, tooling, adapter discovery, and cache invalidation.
+
+---
+
 # Recommended Project Structure
 
 ```
@@ -226,9 +319,17 @@ my-app
 ├─ dist
 │  └─ generated
 │     ├─ tokens.css
+│     ├─ tokens.scss
 │     ├─ tokens.ts
 │     ├─ tokens.json
-│     └─ tailwind-preset.ts
+│     ├─ metadata.json
+│     ├─ themes
+│     │  ├─ light.css
+│     │  └─ dark.css
+│     └─ adapters
+│        ├─ tailwind.preset.ts
+│        ├─ bootstrap.variables.scss
+│        └─ figma.tokens.json
 │
 └─ src
    └─ assets
