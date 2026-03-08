@@ -70,6 +70,12 @@ export default {
 };
 ```
 
+Supported color inputs:
+
+* Tailwind-style tokens like `amber-500`
+* CSS color strings like `#f59e0b` or `rgb(245 158 11)`
+* OKLCH values like `oklch(0.76859 0.164659 70.08)`
+
 ---
 
 # Environment Variables
