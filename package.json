@@ -4,12 +4,14 @@
   "description": "AdvantaCode Design System Brand Generator",
   "type": "module",
   "main": "dist/index.js",
+  "exports": "./dist/index.js",
   "bin": {
     "advantacode-brander": "./dist/index.js"
   },
   "scripts": {
     "build": "tsc",
-    "tokens": "tsx scripts/generate-tokens.ts"
+    "cli": "node dist/index.js",
+    "tokens": "tsx src/generate-tokens.ts"
   },
   "license": "MIT",
   "author": "Anthony Penn",
@@ -20,6 +22,7 @@
     "typescript": "^5.3.0"
   },
   "dependencies": {
-    "culori": "^4.0.2"
+    "culori": "^4.0.2",
+    "dotenv": "^17.3.1"
   }
 }

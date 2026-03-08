@@ -302,6 +302,13 @@ npm run tokens
 You can test the CLI locally without publishing.
 
 ```
+npm run build
+npm run cli
+```
+
+Or link the package and run the installed binary:
+
+```
 npm link
 ```
 
