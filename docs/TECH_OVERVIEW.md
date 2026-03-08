@@ -1,0 +1,511 @@
+# AdvantaCode Brander — Technical Overview
+
+## Overview
+
+AdvantaCode Brander is a **design token generation engine** designed to produce consistent branding outputs for modern web applications.
+
+The tool converts a simple configuration into multiple outputs used across:
+
+* frontend frameworks
+* component libraries
+* CSS systems
+* design tools
+
+The goal is to provide a **single source of truth for brand tokens** while supporting multiple frameworks and environments.
+
+Brander is intentionally **framework-agnostic** and designed to integrate with ecosystems such as Vue, React, Laravel, Quasar, and Tailwind.
+
+---
+
+# Core Architecture
+
+AdvantaCode Brander is built around a **token pipeline**.
+
+```
+brand.config.ts
+        ↓
+token engine
+        ↓
+primitive tokens
+        ↓
+semantic tokens
+        ↓
+framework outputs
+```
+
+This layered architecture allows tokens to remain reusable across different platforms.
+
+---
+
+# Token Layers
+
+The system uses three token layers.
+
+## 1. Primitive Tokens
+
+Primitive tokens represent raw color values and palette scales.
+
+Example:
+
+```
+primary-50
+primary-100
+primary-200
+...
+primary-950
+```
+
+These are generated from the base color using OKLCH lightness scaling.
+
+Example CSS output:
+
+```
+--ac-primary-50
+--ac-primary-100
+--ac-primary-200
+```
+
+Primitive tokens should **never be used directly by components**.
+
+---
+
+## 2. Semantic Tokens
+
+Semantic tokens describe **UI meaning rather than color values**.
+
+Examples:
+
+```
+background
+surface
+text
+border
+primary
+primary-foreground
+muted
+success
+warning
+danger
+```
+
+Example output:
+
+```
+--ac-background
+--ac-text
+--ac-primary
+```
+
+Components reference semantic tokens rather than primitives.
+
+---
+
+## 3. Framework Tokens
+
+Framework tokens convert semantic tokens into framework-specific formats.
+
+Examples include:
+
+```
+Tailwind preset
+Quasar SCSS variables
+Figma tokens
+TypeScript tokens
+```
+
+---
+
+# Color Engine
+
+Brander uses the **OKLCH color space** for palette generation.
+
+OKLCH separates color into:
+
+```
+L = Lightness
+C = Chroma
+H = Hue
+```
+
+This makes it easier to create perceptually consistent color scales.
+
+Example scale generation:
+
+```
+primary-50
+primary-100
+primary-200
+...
+primary-950
+```
+
+The lightness values are adjusted while preserving chroma and hue.
+
+Example:
+
+```
+oklch(0.97 0.2 45)
+oklch(0.93 0.2 45)
+oklch(0.87 0.2 45)
+...
+```
+
+Color conversion is handled using the Culori library.
+
+---
+
+# Light and Dark Theme Generation
+
+The token engine generates **both light and dark themes automatically**.
+
+Themes are implemented using CSS custom properties.
+
+Example output:
+
+```
+:root {
+  --ac-background: oklch(0.99 0.02 95);
+  --ac-text: oklch(0.20 0.02 95);
+}
+
+[data-theme="dark"] {
+  --ac-background: oklch(0.14 0.02 95);
+  --ac-text: oklch(0.95 0.02 95);
+}
+```
+
+Applications can toggle themes using a `data-theme` attribute.
+
+Example:
+
+```
+<html data-theme="dark">
+```
+
+---
+
+# CLI Architecture
+
+Brander is implemented as a Node CLI tool.
+
+The entry point is defined in `package.json`.
+
+```
+"bin": {
+  "advantacode-brander": "./dist/index.js"
+}
+```
+
+CLI flow:
+
+```
+CLI entry
+   ↓
+load configuration
+   ↓
+generate token palette
+   ↓
+generate semantic tokens
+   ↓
+write platform outputs
+```
+
+---
+
+# Package Structure
+
+```
+advantacode-brander
+│
+├─ src
+│  ├─ index.ts
+│  ├─ generate-tokens.ts
+│  └─ culori.d.ts
+│
+├─ tokens
+│  └─ colors.json
+│
+├─ dist
+│
+├─ brand.config.ts
+├─ tsconfig.json
+├─ package.json
+└─ README.md
+```
+
+---
+
+# Source Directory
+
+```
+src/
+```
+
+Contains the CLI entry point and token generation logic.
+
+```
+src/index.ts
+```
+
+CLI entry script.
+
+```
+src/generate-tokens.ts
+```
+
+Core token generation logic.
+
+```
+src/culori.d.ts
+```
+
+Type definitions for Culori.
+
+---
+
+# Token Source Files
+
+```
+tokens/colors.json
+```
+
+Defines base color inputs.
+
+Example:
+
+```
+{
+  "primary": "#f59e0b",
+  "secondary": "#3f3f46"
+}
+```
+
+This file is used by the generator to build the palette.
+
+---
+
+# Output Structure
+
+The generator produces multiple outputs.
+
+```
+tokens/
+   tokens.css
+   tokens.ts
+   tokens.json
+
+framework/
+   tailwind.preset.ts
+   quasar.variables.scss
+   figma.tokens.json
+```
+
+Each output targets a different platform.
+
+---
+
+# CSS Token Output
+
+Example:
+
+```
+:root {
+  --ac-primary: oklch(0.65 0.2 45);
+}
+```
+
+These tokens can be used directly in CSS.
+
+---
+
+# Tailwind Integration
+
+The generator produces a Tailwind preset.
+
+```
+framework/tailwind.preset.ts
+```
+
+Example:
+
+```
+export default {
+  theme: {
+    extend: {
+      colors: {
+        primary: "var(--ac-primary)"
+      }
+    }
+  }
+}
+```
+
+---
+
+# Quasar Integration
+
+Quasar uses SCSS variables.
+
+Generated file:
+
+```
+framework/quasar.variables.scss
+```
+
+Example:
+
+```
+$primary: var(--ac-primary);
+$secondary: var(--ac-secondary);
+```
+
+---
+
+# Figma Token Export
+
+Design tokens can be exported to JSON for use in design tools.
+
+```
+framework/figma.tokens.json
+```
+
+Example:
+
+```
+{
+  "color": {
+    "primary": {
+      "value": "oklch(0.65 0.2 45)"
+    }
+  }
+}
+```
+
+---
+
+# Configuration
+
+User configuration is defined in:
+
+```
+brand.config.ts
+```
+
+Example:
+
+```
+export default {
+  name: "My Company",
+
+  colors: {
+    primary: "amber-500",
+    secondary: "zinc-700"
+  }
+}
+```
+
+Environment variables can override these values.
+
+---
+
+# Build Process
+
+TypeScript is compiled using:
+
+```
+npm run build
+```
+
+Output is placed in:
+
+```
+dist/
+```
+
+---
+
+# Local CLI Development
+
+To test the CLI locally:
+
+```
+npm link
+```
+
+Then run:
+
+```
+advantacode-brander
+```
+
+This simulates a globally installed CLI.
+
+---
+
+# Dependencies
+
+Runtime dependency:
+
+```
+culori
+```
+
+Used for color conversions and OKLCH operations.
+
+Development dependencies:
+
+```
+typescript
+tsx
+eslint
+@types/node
+```
+
+---
+
+# Future Architecture Goals
+
+Planned improvements include:
+
+* automatic accessible color contrast generation
+* dark mode optimization
+* design token specification support
+* CLI configuration flags
+* custom output directories
+* plugin architecture
+* framework adapters
+
+---
+
+# Ecosystem Integration
+
+Brander is designed to integrate into the larger AdvantaCode ecosystem.
+
+```
+@advantacode/brander
+@advantacode/init
+@advantacode/starter
+@advantacode/ui
+```
+
+This allows developers to scaffold fully branded applications with a single command.
+
+---
+
+# Design Philosophy
+
+AdvantaCode Brander follows several key principles:
+
+1. **Single source of truth**
+2. **Framework independence**
+3. **Semantic token design**
+4. **Accessibility-friendly color systems**
+5. **Extensible architecture**
+
+---
+
+# Summary
+
+AdvantaCode Brander acts as the **token engine for the AdvantaCode ecosystem**, enabling consistent branding across applications, frameworks, and design tools.
+
+By separating primitives, semantics, and framework outputs, the system provides both flexibility and long-term maintainability.
