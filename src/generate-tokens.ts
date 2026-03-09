@@ -288,8 +288,8 @@ function createGeneratedMetadata(
     version: packageVersion,
     generated: new Date().toISOString(),
     themes: theme === "both" ? ["light", "dark"] : [theme],
-    adapters,
-    artifacts,
+    adapters: [...new Set(adapters)].sort(),
+    artifacts: [...new Set(artifacts)].sort(),
     cssPrefix
   };
 }

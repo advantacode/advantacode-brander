@@ -1,7 +1,10 @@
 #!/usr/bin/env -S node --import tsx/esm
-import { pathToFileURL } from "url";
+import fs from "fs";
+import { fileURLToPath, pathToFileURL } from "url";
 import { generateTokens, supportedFormats, type GenerationOptions, type OutputFormat } from "./generate-tokens.js";
 import { setupProject, type SetupOptions } from "./setup.js";
+
+const packageVersion = loadPackageVersion();
 
 if (isCliEntryPoint()) {
   process.exit(await runCli(process.argv.slice(2)));
@@ -9,6 +12,11 @@ if (isCliEntryPoint()) {
 
 export async function runCli(args: string[]) {
   try {
+    if (args.includes("--version") || args.includes("-v")) {
+      console.log(packageVersion);
+      return 0;
+    }
+
     const command = resolveCommand(args);
     const commandArgs = command === "generate" ? args : args.slice(1);
 
@@ -35,6 +43,16 @@ function isCliEntryPoint() {
   const entryPoint = process.argv[1];
 
   return Boolean(entryPoint) && pathToFileURL(entryPoint).href === import.meta.url;
+}
+
+function loadPackageVersion() {
+  const packageJsonPath = fileURLToPath(new URL("../package.json", import.meta.url));
+
+  if (!fs.existsSync(packageJsonPath)) {
+    return "0.0.0";
+  }
+
+  return ((JSON.parse(fs.readFileSync(packageJsonPath, "utf8")) as { version?: string }).version ?? "0.0.0");
 }
 
 function resolveCommand(args: string[]) {
@@ -218,6 +236,7 @@ Commands:
 
 Options:
   -h, --help              Show this help output
+  -v, --version           Show the installed package version
   --out <dir>             Output directory (default: dist/brander)
   --format <list>         Comma-separated formats: all, css, json, typescript|ts, scss, tailwind, bootstrap, figma
   --theme <value>         Theme CSS output: light, dark, or both (default: both)
