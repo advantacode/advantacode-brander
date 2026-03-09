@@ -54,6 +54,8 @@ advantacode-brander --out src/tokens
 advantacode-brander --format css,tailwind,figma
 advantacode-brander --theme dark
 advantacode-brander --prefix ac
+advantacode-brander setup --out src/generated/brand --style src/style.css
+advantacode-brander init --out src/generated/brand
 ```
 
 Supported flags:
@@ -63,6 +65,11 @@ Supported flags:
 * `--theme <value>` limits theme CSS output to `light`, `dark`, or `both`
 * `--prefix <value>` applies a CSS variable prefix like `ac`, producing variables such as `--ac-primary`
 * `--help`, `-h` prints the CLI help text
+
+Setup commands:
+
+* `advantacode-brander setup` configures an existing app by creating `brand.config.ts` if needed, adding a `brand:generate` script, patching a stylesheet with token imports, and generating tokens
+* `advantacode-brander init` runs the same setup flow for a freshly created app and is intended to be called by a higher-level scaffolder such as `advantacode-init`
 
 ---
 
@@ -368,6 +375,19 @@ Add a script to the app:
 }
 ```
 
+Or let Brander do that setup explicitly:
+
+```bash
+npx advantacode-brander setup --out src/generated/brand --style src/style.css
+```
+
+That command:
+
+* creates `brand.config.ts` if it does not exist
+* adds `brand:generate` to `package.json` if it is missing
+* adds token CSS imports to the chosen stylesheet
+* runs token generation
+
 Add `brand.config.ts` to the app root:
 
 ```ts
@@ -397,6 +417,8 @@ Import the generated CSS into the app stylesheet:
 @import '@/generated/brand/themes/dark.css';
 ```
 
+If you use `setup`, Brander can add these imports automatically. It will try to detect common stylesheet paths, or you can pass `--style <path>` explicitly.
+
 Generate the files:
 
 ```bash
@@ -417,6 +439,7 @@ What to validate:
 Starter app note:
 
 * if the starter already defines overlapping theme variables, remove or replace that handwritten theme layer so the generated tokens become the single source of truth
+* `setup` is intended for an existing app repository, while `init` is intended for use by an outer scaffolding tool that already knows the app structure
 
 ---
 

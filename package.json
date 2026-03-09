@@ -16,7 +16,8 @@
     "build": "tsc",
     "cli": "node --import tsx/esm dist/index.js",
     "tokens": "tsx src/generate-tokens.ts",
-    "prepack": "npm run build"
+    "prepack": "npm run build",
+    "brand:generate": "advantacode-brander --out src/generated/brand"
   },
   "license": "MIT",
   "author": "Anthony Penn",

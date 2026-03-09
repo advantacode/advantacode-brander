@@ -1,70 +1,70 @@
 #!/usr/bin/env -S node --import tsx/esm
 import { generateTokens, supportedFormats, type GenerationOptions, type OutputFormat } from "./generate-tokens.js";
+import { setupProject, type SetupOptions } from "./setup.js";
 
 const args = process.argv.slice(2);
+const command = resolveCommand(args);
+const commandArgs = command === "generate" ? args : args.slice(1);
 
-if (args.includes("--help") || args.includes("-h")) {
-  console.log(getHelpText());
+if (commandArgs.includes("--help") || commandArgs.includes("-h")) {
+  console.log(getHelpText(command));
   process.exit(0);
 }
 
-const options = parseCliArgs(args);
+if (command === "generate") {
+  await generateTokens(parseGenerateArgs(commandArgs));
+} else {
+  await setupProject(parseSetupArgs(command, commandArgs));
+}
 
-await generateTokens(options);
+function resolveCommand(args: string[]) {
+  const firstArg = args[0];
 
-function parseCliArgs(args: string[]): GenerationOptions {
+  if (!firstArg || firstArg.startsWith("-")) {
+    return "generate" as const;
+  }
+
+  if (firstArg === "setup" || firstArg === "init") {
+    return firstArg;
+  }
+
+  throw new Error(`Unknown command "${firstArg}". Use --help to see supported commands.`);
+}
+
+function parseGenerateArgs(args: string[]): GenerationOptions {
   const options: GenerationOptions = {};
 
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
 
     if (arg === "--out") {
-      const nextArg = args[index + 1];
-
-      if (!nextArg) {
-        throw new Error("Missing value for --out.");
-      }
-
-      options.outputDir = nextArg;
+      options.outputDir = getNextArgValue(arg, args, index);
       index += 1;
       continue;
     }
 
     if (arg === "--format") {
-      const nextArg = args[index + 1];
-
-      if (!nextArg) {
-        throw new Error("Missing value for --format.");
-      }
-
-      options.formats = nextArg
+      options.formats = getNextArgValue(arg, args, index)
         .split(",")
-        .map((value) => normalizeFormat(value.trim()))
-        .filter((value): value is OutputFormat => value !== undefined);
+        .map((value) => normalizeFormat(value.trim()));
       index += 1;
       continue;
     }
 
     if (arg === "--theme") {
-      const nextArg = args[index + 1];
+      const themeValue = getNextArgValue(arg, args, index);
 
-      if (!nextArg || !["light", "dark", "both"].includes(nextArg)) {
+      if (!["light", "dark", "both"].includes(themeValue)) {
         throw new Error('Invalid value for --theme. Use "light", "dark", or "both".');
       }
 
-      options.theme = nextArg as GenerationOptions["theme"];
+      options.theme = themeValue as GenerationOptions["theme"];
       index += 1;
       continue;
     }
 
     if (arg === "--prefix") {
-      const nextArg = args[index + 1];
-
-      if (nextArg === undefined) {
-        throw new Error("Missing value for --prefix.");
-      }
-
-      options.prefix = nextArg;
+      options.prefix = getNextArgValue(arg, args, index);
       index += 1;
       continue;
     }
@@ -75,6 +75,73 @@ function parseCliArgs(args: string[]): GenerationOptions {
   }
 
   return options;
+}
+
+function parseSetupArgs(command: "setup" | "init", args: string[]): SetupOptions {
+  const generateOptions = parseGenerateArgs(
+    args.filter((arg) => !["--style", "--script-name", "--skip-imports", "--skip-script", "--skip-config", "--skip-generate"].includes(arg))
+  );
+  const options: SetupOptions = {
+    command,
+    ...generateOptions
+  };
+
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+
+    if (arg === "--out" || arg === "--format" || arg === "--theme" || arg === "--prefix") {
+      index += 1;
+      continue;
+    }
+
+    if (arg === "--style") {
+      options.stylePath = getNextArgValue(arg, args, index);
+      index += 1;
+      continue;
+    }
+
+    if (arg === "--script-name") {
+      options.scriptName = getNextArgValue(arg, args, index);
+      index += 1;
+      continue;
+    }
+
+    if (arg === "--skip-imports") {
+      options.skipImports = true;
+      continue;
+    }
+
+    if (arg === "--skip-script") {
+      options.skipScript = true;
+      continue;
+    }
+
+    if (arg === "--skip-config") {
+      options.skipConfig = true;
+      continue;
+    }
+
+    if (arg === "--skip-generate") {
+      options.skipGenerate = true;
+      continue;
+    }
+
+    if (arg.startsWith("-")) {
+      throw new Error(`Unknown option "${arg}". Use --help to see supported flags.`);
+    }
+  }
+
+  return options;
+}
+
+function getNextArgValue(flag: string, args: string[], index: number) {
+  const nextArg = args[index + 1];
+
+  if (nextArg === undefined) {
+    throw new Error(`Missing value for ${flag}.`);
+  }
+
+  return nextArg;
 }
 
 function normalizeFormat(value: string) {
@@ -89,11 +156,45 @@ function normalizeFormat(value: string) {
   throw new Error(`Unknown format "${value}". Use --help to see supported formats.`);
 }
 
-function getHelpText() {
+function getHelpText(command: "generate" | "setup" | "init") {
+  if (command === "setup" || command === "init") {
+    return `AdvantaCode Brander
+
+Usage:
+  advantacode-brander ${command} [options]
+
+Setup options:
+  --out <dir>             Output directory (default: src/generated/brand)
+  --style <path>          Stylesheet file to patch with token imports
+  --script-name <name>    package.json script to create (default: brand:generate)
+  --skip-imports          Do not patch a stylesheet with token imports
+  --skip-script           Do not add a package.json script
+  --skip-config           Do not create brand.config.ts when missing
+  --skip-generate         Do not run token generation after setup
+
+Generation options:
+  --format <list>         Comma-separated formats: all, css, json, typescript|ts, scss, tailwind, bootstrap, figma
+  --theme <value>         Theme CSS output: light, dark, or both (default: both)
+  --prefix <value>        CSS variable prefix. Use "" or omit for no prefix
+
+Examples:
+  advantacode-brander ${command}
+  advantacode-brander ${command} --out src/generated/brand
+  advantacode-brander ${command} --style src/style.css
+  advantacode-brander ${command} --skip-imports --skip-generate
+`;
+  }
+
   return `AdvantaCode Brander
 
 Usage:
   advantacode-brander [options]
+  advantacode-brander setup [options]
+  advantacode-brander init [options]
+
+Commands:
+  setup                   Configure an existing app to use Brander
+  init                    Initialize a new app for Brander-driven tokens
 
 Options:
   -h, --help              Show this help output
@@ -105,8 +206,7 @@ Options:
 Examples:
   advantacode-brander
   advantacode-brander --out src/tokens
-  advantacode-brander --format css,tailwind,figma
-  advantacode-brander --theme dark
-  advantacode-brander --prefix ac
+  advantacode-brander setup --out src/generated/brand --style src/style.css
+  advantacode-brander init --out resources/generated/brand --skip-imports
 `;
 }

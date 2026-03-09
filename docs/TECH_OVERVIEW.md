@@ -202,6 +202,12 @@ CLI flow:
 ```
 CLI entry
    ↓
+command parsing
+   ↓
+generate | setup | init
+   ↓
+project setup helpers
+   ↓
 load configuration
    ↓
 generate token palette
@@ -210,6 +216,12 @@ generate semantic tokens
    ↓
 write platform outputs
 ```
+
+Command roles:
+
+* default generate command writes token artifacts only
+* `setup` configures an existing app by creating `brand.config.ts`, adding a package script, patching stylesheet imports, and then generating tokens
+* `init` uses the same setup flow but is intended to be called by a higher-level scaffolding tool such as `advantacode-init`
 
 ---
 
@@ -221,6 +233,7 @@ advantacode-brander
 ├─ src
 │  ├─ index.ts
 │  ├─ generate-tokens.ts
+│  ├─ setup.ts
 │  ├─ engine/
 │  ├─ adapters/
 │  └─ culori.d.ts
@@ -254,6 +267,12 @@ src/generate-tokens.ts
 ```
 
 Generation orchestration and output writing.
+
+```
+src/setup.ts
+```
+
+Project setup helpers for `setup` and `init`.
 
 ```
 src/engine/
