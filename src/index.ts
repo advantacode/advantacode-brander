@@ -1,31 +1,40 @@
 #!/usr/bin/env -S node --import tsx/esm
+import { pathToFileURL } from "url";
 import { generateTokens, supportedFormats, type GenerationOptions, type OutputFormat } from "./generate-tokens.js";
 import { setupProject, type SetupOptions } from "./setup.js";
 
-await main();
+if (isCliEntryPoint()) {
+  process.exit(await runCli(process.argv.slice(2)));
+}
 
-async function main() {
+export async function runCli(args: string[]) {
   try {
-    const args = process.argv.slice(2);
     const command = resolveCommand(args);
     const commandArgs = command === "generate" ? args : args.slice(1);
 
     if (commandArgs.includes("--help") || commandArgs.includes("-h")) {
       console.log(getHelpText(command));
-      process.exit(0);
+      return 0;
     }
 
     if (command === "generate") {
       await generateTokens(parseGenerateArgs(commandArgs));
-      return;
+      return 0;
     }
 
     await setupProject(parseSetupArgs(command, commandArgs));
+    return 0;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error(`Error: ${message}`);
-    process.exit(1);
+    return 1;
   }
+}
+
+function isCliEntryPoint() {
+  const entryPoint = process.argv[1];
+
+  return Boolean(entryPoint) && pathToFileURL(entryPoint).href === import.meta.url;
 }
 
 function resolveCommand(args: string[]) {

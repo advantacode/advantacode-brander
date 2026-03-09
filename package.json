@@ -15,7 +15,9 @@
     "clean": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\"",
     "build": "npm run clean && tsc",
     "cli": "node --import tsx/esm dist/index.js",
-    "release:check": "npm run build && npm pack --dry-run",
+    "pretest": "npm run build",
+    "test": "node --import tsx/esm --test",
+    "release:check": "npm test && npm pack --dry-run",
     "tokens": "tsx src/generate-tokens.ts",
     "prepack": "npm run build",
     "brand:generate": "advantacode-brander --out src/generated/brand"

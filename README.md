@@ -468,7 +468,7 @@ Verify what npm will publish:
 npm run release:check
 ```
 
-The dry run should list compiled files such as `dist/index.js`, `dist/generate-tokens.js`, adapter modules, `README.md`, and `LICENSE`, without shipping any local `dist/generated` output.
+`release:check` runs the test suite first, then performs the npm pack dry run. The tarball output should list compiled files such as `dist/index.js`, `dist/generate-tokens.js`, adapter modules, `README.md`, and `LICENSE`, without shipping any local `dist/generated` output.
 
 ---
 
@@ -557,6 +557,23 @@ npm install
 ```
 npm run build
 ```
+
+---
+
+# Test
+
+Run the integration suite against the built CLI:
+
+```bash
+npm test
+```
+
+The current tests cover:
+
+* `--help` CLI output
+* token generation in a temporary project
+* `setup` creating config, patching styles, and generating files
+* invalid config failures returning clean error messages
 
 ---
 
