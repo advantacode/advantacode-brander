@@ -2,8 +2,9 @@ import fs from "fs";
 import path from "path";
 import { semanticTokenNames } from "../engine/semantics.js";
 import type { TokenModel } from "../engine/themes.js";
+import { getVariableReference, type VariableOptions } from "./variables.js";
 
-export function writeTailwindAdapter(outputDir: string, tokenModel: TokenModel) {
+export function writeTailwindAdapter(outputDir: string, tokenModel: TokenModel, variableOptions: VariableOptions) {
   const adaptersDir = path.join(outputDir, "adapters");
   let preset = `export default {\n  theme: {\n    extend: {\n      colors: {\n`;
 
@@ -14,7 +15,7 @@ export function writeTailwindAdapter(outputDir: string, tokenModel: TokenModel) 
       continue;
     }
 
-    preset += `        "${semanticTokenName}": "var(--ac-${semanticTokenName})",\n`;
+    preset += `        "${semanticTokenName}": "${getVariableReference(semanticTokenName, variableOptions)}",\n`;
   }
 
   preset += "      }\n    }\n  }\n};\n";

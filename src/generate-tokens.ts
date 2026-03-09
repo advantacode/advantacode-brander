@@ -8,6 +8,7 @@ import { writeMetadataJson, writeTokenModelJson, type GeneratedMetadata } from "
 import { writeScssArtifacts } from "./adapters/scss.js";
 import { writeTailwindAdapter } from "./adapters/tailwind.js";
 import { writeTypeScriptArtifacts } from "./adapters/typescript.js";
+import { normalizeVariablePrefix } from "./adapters/variables.js";
 import { baseColorNames, resolveBaseColors, type PartialBaseColors } from "./engine/color-parser.js";
 import { createTokenModel } from "./engine/themes.js";
 
@@ -28,16 +29,19 @@ export type GenerationOptions = {
   outputDir?: string;
   formats?: OutputFormat[];
   theme?: ThemeSelection;
+  prefix?: string;
 };
 
 type BrandConfig = {
   name?: string;
   colors?: PartialBaseColors;
+  css?: {
+    prefix?: string;
+  };
 };
 
-const defaultOutputDir = path.resolve(process.cwd(), "dist", "generated");
-
 export async function generateTokens(options: GenerationOptions = {}) {
+  const defaultOutputDir = resolveDefaultOutputDir();
   const outputDir = options.outputDir ? path.resolve(process.cwd(), options.outputDir) : defaultOutputDir;
   const theme = options.theme ?? "both";
   const formats = resolveFormats(options.formats);
@@ -45,6 +49,7 @@ export async function generateTokens(options: GenerationOptions = {}) {
   loadDotEnv({ path: path.resolve(process.cwd(), ".env"), quiet: true });
 
   const brandConfig = await loadBrandConfig();
+  const prefix = resolveCssPrefix(options.prefix, brandConfig.css?.prefix, process.env.CSS_PREFIX);
   const baseColors = resolveBaseColors(brandConfig.colors ?? {});
   const tokenModel = createTokenModel(baseColors);
 
@@ -58,9 +63,10 @@ export async function generateTokens(options: GenerationOptions = {}) {
 
   const writtenArtifacts: string[] = [];
   const writtenAdapters: string[] = [];
+  const variableOptions = { prefix };
 
   if (formats.has("css")) {
-    writtenArtifacts.push(...writeCssArtifacts(outputDir, tokenModel, theme));
+    writtenArtifacts.push(...writeCssArtifacts(outputDir, tokenModel, theme, variableOptions));
   }
 
   if (formats.has("json")) {
@@ -71,13 +77,14 @@ export async function generateTokens(options: GenerationOptions = {}) {
     writtenArtifacts.push(
       ...writeScssArtifacts(outputDir, tokenModel, {
         includeTokensScss: formats.has("scss"),
-        includeBootstrapAdapter: formats.has("bootstrap")
+        includeBootstrapAdapter: formats.has("bootstrap"),
+        variableOptions
       })
     );
   }
 
   if (formats.has("tailwind")) {
-    writtenArtifacts.push(...writeTailwindAdapter(outputDir, tokenModel));
+    writtenArtifacts.push(...writeTailwindAdapter(outputDir, tokenModel, variableOptions));
     writtenAdapters.push("tailwind");
   }
 
@@ -91,7 +98,7 @@ export async function generateTokens(options: GenerationOptions = {}) {
   }
 
   const plannedArtifacts = [...new Set([...writtenArtifacts, ...(formats.has("typescript") ? ["tokens.ts"] : []), "metadata.json"])];
-  const metadata = createGeneratedMetadata(theme, writtenAdapters, plannedArtifacts);
+  const metadata = createGeneratedMetadata(theme, writtenAdapters, plannedArtifacts, prefix);
 
   if (formats.has("typescript")) {
     writtenArtifacts.push(...writeTypeScriptArtifacts(outputDir, tokenModel, metadata));
@@ -177,6 +184,25 @@ function parseBrandConfig(rawConfig: unknown, configPath: string): BrandConfig {
     parsedConfig.colors = parsedColors;
   }
 
+  if ("css" in config && config.css !== undefined) {
+    if (typeof config.css !== "object" || config.css === null || Array.isArray(config.css)) {
+      throw new Error(`Expected "css" in ${path.basename(configPath)} to be an object.`);
+    }
+
+    const cssConfig = config.css as Record<string, unknown>;
+    const parsedCssConfig: NonNullable<BrandConfig["css"]> = {};
+
+    if ("prefix" in cssConfig && cssConfig.prefix !== undefined) {
+      if (typeof cssConfig.prefix !== "string") {
+        throw new Error(`Expected "css.prefix" in ${path.basename(configPath)} to be a string.`);
+      }
+
+      parsedCssConfig.prefix = cssConfig.prefix;
+    }
+
+    parsedConfig.css = parsedCssConfig;
+  }
+
   return parsedConfig;
 }
 
@@ -220,6 +246,12 @@ function removeLegacyGeneratedFiles() {
   for (const legacyFile of legacyFiles) {
     fs.rmSync(legacyFile, { force: true });
   }
+
+  removeManagedArtifacts(path.resolve(process.cwd(), "dist", "generated"));
+}
+
+function resolveDefaultOutputDir() {
+  return path.resolve(process.cwd(), "dist", "brander");
 }
 
 function removeManagedArtifacts(outputDir: string) {
@@ -244,7 +276,8 @@ function removeManagedArtifacts(outputDir: string) {
 function createGeneratedMetadata(
   theme: ThemeSelection,
   adapters: string[],
-  artifacts: string[]
+  artifacts: string[],
+  cssPrefix: string
 ): GeneratedMetadata {
   const packageJsonPath = fileURLToPath(new URL("../package.json", import.meta.url));
   const packageVersion = fs.existsSync(packageJsonPath)
@@ -256,6 +289,15 @@ function createGeneratedMetadata(
     generated: new Date().toISOString(),
     themes: theme === "both" ? ["light", "dark"] : [theme],
     adapters,
-    artifacts
+    artifacts,
+    cssPrefix
   };
+}
+
+function resolveCssPrefix(
+  cliPrefix: string | undefined,
+  configPrefix: string | undefined,
+  envPrefix: string | undefined
+) {
+  return normalizeVariablePrefix(cliPrefix ?? envPrefix ?? configPrefix ?? "");
 }

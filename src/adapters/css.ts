@@ -3,37 +3,46 @@ import path from "path";
 import { scaleSteps, type PrimitiveColorName } from "../engine/palette.js";
 import { semanticTokenNames } from "../engine/semantics.js";
 import type { TokenModel } from "../engine/themes.js";
+import { getVariableName, getVariableReference, type VariableOptions } from "./variables.js";
 
 export type ThemeSelection = "light" | "dark" | "both";
 
-export function writeCssArtifacts(outputDir: string, tokenModel: TokenModel, theme: ThemeSelection) {
+export function writeCssArtifacts(
+  outputDir: string,
+  tokenModel: TokenModel,
+  theme: ThemeSelection,
+  variableOptions: VariableOptions
+) {
   const themesDir = path.join(outputDir, "themes");
   const writtenArtifacts = ["tokens.css"];
 
   fs.mkdirSync(themesDir, { recursive: true });
-  fs.writeFileSync(path.join(outputDir, "tokens.css"), renderPrimitiveTokens(tokenModel));
+  fs.writeFileSync(path.join(outputDir, "tokens.css"), renderPrimitiveTokens(tokenModel, variableOptions));
 
   if (theme === "light" || theme === "both") {
-    fs.writeFileSync(path.join(themesDir, "light.css"), renderThemeCss(":root", tokenModel, "light"));
+    fs.writeFileSync(path.join(themesDir, "light.css"), renderThemeCss(":root", tokenModel, "light", variableOptions));
     writtenArtifacts.push("themes/light.css");
   }
 
   if (theme === "dark" || theme === "both") {
-    fs.writeFileSync(path.join(themesDir, "dark.css"), renderThemeCss('[data-theme="dark"]', tokenModel, "dark"));
+    fs.writeFileSync(
+      path.join(themesDir, "dark.css"),
+      renderThemeCss('[data-theme="dark"]', tokenModel, "dark", variableOptions)
+    );
     writtenArtifacts.push("themes/dark.css");
   }
 
   return writtenArtifacts;
 }
 
-function renderPrimitiveTokens(tokenModel: TokenModel) {
+function renderPrimitiveTokens(tokenModel: TokenModel, variableOptions: VariableOptions) {
   let css = ":root {\n";
 
   for (const [colorName, scale] of Object.entries(tokenModel.color.primitive) as Array<
     [PrimitiveColorName, TokenModel["color"]["primitive"][PrimitiveColorName]]
   >) {
     for (const step of scaleSteps) {
-      css += `  --ac-${colorName}-${step}: ${scale[step]};\n`;
+      css += `  ${getVariableName(`${colorName}-${step}`, variableOptions)}: ${scale[step]};\n`;
     }
   }
 
@@ -42,19 +51,20 @@ function renderPrimitiveTokens(tokenModel: TokenModel) {
   return css;
 }
 
-function renderThemeCss(selector: string, tokenModel: TokenModel, themeName: "light" | "dark") {
+function renderThemeCss(
+  selector: string,
+  tokenModel: TokenModel,
+  themeName: "light" | "dark",
+  variableOptions: VariableOptions
+) {
   let css = `${selector} {\n`;
 
   for (const semanticTokenName of semanticTokenNames) {
     const token = tokenModel.color.semantic[themeName][semanticTokenName];
-    css += `  --ac-${semanticTokenName}: ${toCssVariableReference(token.ref)};\n`;
+    css += `  ${getVariableName(semanticTokenName, variableOptions)}: ${getVariableReference(token.ref, variableOptions)};\n`;
   }
 
   css += "}\n";
 
   return css;
-}
-
-function toCssVariableReference(reference: string) {
-  return `var(--ac-${reference.replace(".", "-")})`;
 }

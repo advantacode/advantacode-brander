@@ -8,6 +8,7 @@ export type GeneratedMetadata = {
   themes: string[];
   adapters: string[];
   artifacts: string[];
+  cssPrefix: string;
 };
 
 export function writeTokenModelJson(outputDir: string, tokenModel: TokenModel) {
