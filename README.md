@@ -1,6 +1,6 @@
 # AdvantaCode Brander
 
-AdvantaCode Brander is a **design token generator** that produces consistent branding tokens for modern web applications.
+AdvantaCode Brander is a design token generator that produces consistent branding tokens for modern web applications.
 
 It converts a simple configuration into reusable outputs for multiple platforms including:
 
@@ -10,11 +10,9 @@ It converts a simple configuration into reusable outputs for multiple platforms 
 * Bootstrap / SCSS variables
 * Figma tokens
 
-AdvantaCode Brander uses **OKLCH color space** to generate perceptually consistent color scales.
+AdvantaCode Brander uses OKLCH color space to generate perceptually consistent color scales.
 
----
-
-# Quick Start
+## Quick Start
 
 ```bash
 npm install -D @advantacode/brander
@@ -23,9 +21,11 @@ npx --package @advantacode/brander advantacode-brander setup --out src/brander -
 
 This creates `brand.config.ts`, adds a `brand:generate` script, patches your stylesheet imports, and prepares the token output folder.
 
----
+AdvantaCode Brander generates design tokens and framework adapters from a single brand configuration file. It allows applications, design systems, and design tools to share a consistent source of truth for colors and semantic tokens.
 
-# Features
+For architecture, development, testing, and publishing workflows, see [docs/TECH_OVERVIEW.md](docs/TECH_OVERVIEW.md).
+
+## Features
 
 * Single source of truth for brand tokens
 * OKLCH color scaling
@@ -33,11 +33,9 @@ This creates `brand.config.ts`, adds a `brand:generate` script, patches your sty
 * CLI tool usable across any JavaScript stack
 * Environment variable support
 * Tailwind integration
-* Design-tool exports (Figma)
+* Design-tool exports for Figma
 
----
-
-# Installation
+## Installation
 
 Node.js 20 or newer is required.
 
@@ -65,9 +63,11 @@ Run:
 advantacode-brander
 ```
 
-CLI options:
+## CLI Usage
 
-```
+Examples:
+
+```text
 advantacode-brander --help
 advantacode-brander --version
 advantacode-brander --out src/tokens
@@ -92,9 +92,7 @@ Setup commands:
 * `advantacode-brander setup` configures an existing app by creating `brand.config.ts` if needed, adding a `brand:generate` script, patching a stylesheet with token imports, and generating tokens
 * `advantacode-brander init` runs the same setup flow for a freshly created app and is intended to be called by a higher-level scaffolder such as `advantacode-init`
 
----
-
-# Configuration
+## Configuration
 
 Create a `brand.config.ts` file in your project root.
 
@@ -113,7 +111,6 @@ export default {
     neutral: process.env.NEUTRAL_COLOR || process.env.SECONDARY_COLOR || "zinc-700",
     accent: process.env.ACCENT_COLOR || "amber-400",
     info: process.env.INFO_COLOR || "sky-500",
-
     success: process.env.SUCCESS_COLOR || "green-500",
     warning: process.env.WARNING_COLOR || "yellow-500",
     danger: process.env.DANGER_COLOR || "red-500"
@@ -127,15 +124,13 @@ Supported color inputs:
 * CSS color strings like `#f59e0b` or `rgb(245 158 11)`
 * OKLCH values like `oklch(0.76859 0.164659 70.08)`
 
----
-
-# Environment Variables
+## Environment Variables
 
 Brander supports environment variables via `.env`.
 
 Example:
 
-```
+```dotenv
 COMPANY_NAME=AdvantaCode
 CSS_PREFIX=
 PRIMARY_COLOR=amber-500
@@ -148,32 +143,28 @@ WARNING_COLOR=yellow-500
 DANGER_COLOR=red-500
 ```
 
----
-
-# Generated Outputs
+## Generated Outputs
 
 Running the CLI with no flags generates all formats into `dist/brander` and writes both light and dark theme CSS.
 
-```
+```text
 dist/
   brander/
-   tokens.css
-   tokens.scss
-   tokens.ts
-   tokens.json
-   metadata.json
-   themes/
-     light.css
-     dark.css
-   adapters/
-     tailwind.preset.ts
-     bootstrap.variables.scss
-     figma.tokens.json
+    tokens.css
+    tokens.scss
+    tokens.ts
+    tokens.json
+    metadata.json
+    themes/
+      light.css
+      dark.css
+    adapters/
+      tailwind.preset.ts
+      bootstrap.variables.scss
+      figma.tokens.json
 ```
 
----
-
-# CSS Variables
+## CSS Variables
 
 Example generated `tokens.css`:
 
@@ -195,9 +186,7 @@ Usage:
 
 By default, Brander emits unprefixed variables for broader compatibility. If you want namespaced output, use `css.prefix` in `brand.config.ts`, `CSS_PREFIX` in `.env`, or `--prefix ac` on the CLI.
 
----
-
-# Theme Tokens
+## Theme Tokens
 
 Example:
 
@@ -222,13 +211,11 @@ Example:
 
 Core semantic tokens include `background`, `surface`, `text`, `muted`, `card`, `popover`, `border`, `input`, `ring`, `primary`, `secondary`, `accent`, `info`, `success`, `warning`, and `danger`, each with matching foreground tokens where appropriate.
 
----
-
-# TypeScript Tokens
+## TypeScript Tokens
 
 Generated file:
 
-```
+```text
 dist/brander/tokens.ts
 ```
 
@@ -243,13 +230,11 @@ console.log(metadata.adapters);
 
 This output is intended for typed apps, scripts, and build-time tooling.
 
----
-
-# SCSS Tokens
+## SCSS Tokens
 
 Generated file:
 
-```
+```text
 dist/brander/tokens.scss
 ```
 
@@ -266,13 +251,11 @@ Usage:
 
 Light semantic tokens are emitted as Sass variables like `$background`, and dark semantic tokens are emitted as `$dark-background`. Prefixing works here too when configured.
 
----
-
-# Tailwind Integration
+## Tailwind Integration
 
 Generated preset:
 
-```
+```text
 dist/brander/adapters/tailwind.preset.ts
 ```
 
@@ -288,19 +271,17 @@ export default {
 
 Use tokens in Tailwind:
 
-```
+```text
 bg-primary
 text-danger
 border-secondary
 ```
 
----
-
-# Bootstrap / SCSS Frameworks
+## Bootstrap / SCSS Frameworks
 
 Generated file:
 
-```
+```text
 dist/brander/adapters/bootstrap.variables.scss
 ```
 
@@ -314,13 +295,11 @@ $secondary: tokens.$secondary;
 $info: tokens.$info;
 ```
 
----
-
-# Figma Token Export
+## Figma Token Export
 
 Generated:
 
-```
+```text
 dist/brander/adapters/figma.tokens.json
 ```
 
@@ -338,13 +317,11 @@ Example:
 
 This allows importing tokens into design tools.
 
----
-
-# Metadata
+## Metadata
 
 Generated file:
 
-```
+```text
 dist/brander/metadata.json
 ```
 
@@ -361,342 +338,11 @@ Example:
 }
 ```
 
----
-
-# Testing In Another Project
-
-The recommended real-world test flow is to install Brander as a `devDependency` in another app using a packed tarball.
-
-Why `devDependency`:
-
-* Brander is a build-time code generation tool
-* your app needs the generated token files at runtime, not the generator itself
-
-Build and pack Brander:
-
-```bash
-npm run build
-npm pack --pack-destination /tmp
-```
-
-Then install it into another project such as `advantacode-starter`:
-
-```bash
-cd ../advantacode-starter
-npm i -D /tmp/advantacode-brander-0.1.0.tgz
-```
-
-Add a script to the app:
-
-```json
-{
-  "scripts": {
-    "brand:generate": "advantacode-brander --out src/brander --format css,json,typescript --theme both"
-  }
-}
-```
-
-Or let Brander do that setup explicitly:
-
-```bash
-npx --package @advantacode/brander advantacode-brander setup --out src/brander --style src/style.css
-```
-
-That command:
-
-* creates `brand.config.ts` if it does not exist
-* adds `brand:generate` to `package.json` if it is missing
-* adds token CSS imports to the chosen stylesheet
-* runs token generation
-
-Add `brand.config.ts` to the app root:
-
-```ts
-export default {
-  name: process.env.COMPANY_NAME || "AdvantaCode",
-  css: {
-    prefix: process.env.CSS_PREFIX ?? ""
-  },
-  colors: {
-    primary: process.env.PRIMARY_COLOR || "amber-500",
-    secondary: process.env.SECONDARY_COLOR || "zinc-700",
-    neutral: process.env.NEUTRAL_COLOR || process.env.SECONDARY_COLOR || "zinc-700",
-    accent: process.env.ACCENT_COLOR || "amber-400",
-    info: process.env.INFO_COLOR || "sky-500",
-    success: process.env.SUCCESS_COLOR || "green-500",
-    warning: process.env.WARNING_COLOR || "yellow-500",
-    danger: process.env.DANGER_COLOR || "red-500"
-  }
-};
-```
-
-Import the generated CSS into the app stylesheet:
-
-```css
-@import '@/brander/tokens.css';
-@import '@/brander/themes/light.css';
-@import '@/brander/themes/dark.css';
-```
-
-If you use `setup`, Brander can add these imports automatically. It will try to detect common stylesheet paths, or you can pass `--style <path>` explicitly.
-
-Generate the files:
-
-```bash
-npm run brand:generate
-```
-
-What to validate:
-
-* the package installs cleanly as a `devDependency`
-* `advantacode-brander` resolves correctly from npm scripts
-* `brand.config.ts` is detected automatically
-* generated files land in the expected folder
-* rerunning generation replaces old outputs cleanly
-* the app builds after importing the generated CSS
-* light and dark theme variables resolve correctly
-* changing a color in `brand.config.ts` produces a visible change after regeneration
-
-Starter app note:
-
-* if the starter already defines overlapping theme variables, remove or replace that handwritten theme layer so the generated tokens become the single source of truth
-* `setup` is intended for an existing app repository, while `init` is intended for use by an outer scaffolding tool that already knows the app structure
-
----
-
-# Publishing Notes
-
-Brander should be published with compiled `dist/` files included in the npm package, but `dist/` does not need to be committed to git.
-
-Current package behavior:
-
-* `dist/` stays in `.gitignore`
-* `npm run build` cleans and rebuilds compiled CLI files
-* `package.json` limits publish contents to compiled JavaScript plus docs and license
-* generated sample token artifacts are not published
-
-Verify what npm will publish:
-
-```bash
-npm run release:check
-```
-
-`release:check` runs linting, the test suite, and then the npm pack dry run. The tarball output should list compiled files such as `dist/index.js`, `dist/generate-tokens.js`, adapter modules, `README.md`, and `LICENSE`, without shipping any local `dist/brander` output.
-
----
-
-# Support This Project
-
-If this package saves you time, consider supporting ongoing maintenance through GitHub Sponsors or Buy Me a Coffee once those links are available.
-
----
-
-# Recommended Project Structure
-
-```
-my-app
-│
-├─ brand.config.ts
-├─ .env
-│
-├─ dist
-│  └─ brander
-│     ├─ tokens.css
-│     ├─ tokens.scss
-│     ├─ tokens.ts
-│     ├─ tokens.json
-│     ├─ metadata.json
-│     ├─ themes
-│     │  ├─ light.css
-│     │  └─ dark.css
-│     └─ adapters
-│        ├─ tailwind.preset.ts
-│        ├─ bootstrap.variables.scss
-│        └─ figma.tokens.json
-│
-└─ src
-   └─ assets
-      └─ styles.css
-```
-
----
-
-# Color Engine
-
-Brander uses the **OKLCH color space** to generate consistent color scales.
-
-Example scale:
-
-```
-primary-50
-primary-100
-primary-200
-...
-primary-950
-```
-
-Example output:
-
-```
-oklch(0.97 0.2 45)
-oklch(0.93 0.2 45)
-oklch(0.87 0.2 45)
-...
-```
-
-Color conversions are handled using the Culori library.
-
----
-
-# Development
-
-Clone the repository:
-
-```
-git clone https://github.com/advantacode/advantacode-brander.git
-cd advantacode-brander
-```
-
-Install dependencies:
-
-```
-npm install
-```
-
----
-
-# Build
-
-```
-npm run build
-```
-
----
-
-# Lint
-
-Lint only the repository source and tests:
-
-```bash
-npm run lint
-```
-
-Generated output folders such as `dist/brander` or `src/brander` are intentionally excluded.
-
----
-
-# Test
-
-Run the integration suite against the built CLI:
-
-```bash
-npm test
-```
-
-The current tests cover:
-
-* `--help` CLI output
-* token generation into the default `dist/brander` folder
-* `setup` creating config, scripts, and stylesheet imports for `src/brander`
-* invalid config failures returning clean error messages
-
----
-
-# Run Token Generator
-
-```
-npm run tokens
-```
-
----
-
-# Local CLI Testing
-
-You can test the CLI locally without publishing.
-
-```bash
-npm run build
-npm run cli
-```
-
-To test the real npm-consumer flow, prefer packing the package and installing the tarball in another project:
-
-```bash
-npm run build
-npm pack --pack-destination /tmp
-```
-
-Then install it as a `devDependency` in another app:
-
-```bash
-cd ../advantacode-starter
-npm i -D /tmp/advantacode-brander-0.1.0.tgz
-```
-
----
-
-# Dependencies
-
-Runtime:
-
-* culori
-
-Development:
-
-* typescript
-* tsx
-* eslint
-* @types/node
-
----
-
-# TypeScript Configuration
-
-```
-{
-  "compilerOptions": {
-    "target": "ES2022",
-    "module": "ESNext",
-    "moduleResolution": "Node",
-    "outDir": "dist",
-    "rootDir": "src",
-    "esModuleInterop": true,
-    "strict": true
-  },
-  "include": ["src"]
-}
-```
-
----
-
-# CLI Entry Point
-
-```
-src/index.ts
-```
-
-```ts
-#!/usr/bin/env -S node --import tsx/esm
-```
-
----
-
-# Roadmap
-
-Planned improvements:
-
-* automatic Tailwind palette generation
-* design token standard support
-* framework plugins
-* optional semantic packs for charts, dashboards, and app shells
-
----
-
-# Ecosystem
+## Ecosystem
 
 AdvantaCode Brander is part of the AdvantaCode ecosystem.
 
-```
+```text
 @advantacode/brander
 advantacode-init
 advantacode-starter
@@ -704,15 +350,22 @@ advantacode-starter
 
 This allows developers to bootstrap fully branded applications with a single command.
 
----
+## Contributing
 
-# License
+AdvantaCode Brander is maintained under a closed governance model.
 
-MIT License
+Issues and feature requests are welcome, but pull requests may not be accepted.
 
----
+See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) for details.
 
-# Author
+## Trademark Notice
 
-Anthony Penn
-AdvantaCode
+`AdvantaCode` and `AdvantaCode Brander` are trademarks of AdvantaCode.
+
+The MIT license for this package does not grant permission to use the AdvantaCode name, logos, package names, domains, or branding, or to imply endorsement or affiliation.
+
+See [docs/TRADEMARKS.md](docs/TRADEMARKS.md) for the trademark policy.
+
+## License
+
+MIT License. See [LICENSE](LICENSE).
