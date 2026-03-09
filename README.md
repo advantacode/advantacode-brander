@@ -7,7 +7,7 @@ It converts a simple configuration into reusable outputs for multiple platforms 
 * CSS variables
 * TypeScript tokens
 * Tailwind presets
-* Quasar variables
+* Bootstrap / SCSS variables
 * Figma tokens
 
 AdvantaCode Brander uses **OKLCH color space** to generate perceptually consistent color scales.
@@ -28,21 +28,29 @@ AdvantaCode Brander uses **OKLCH color space** to generate perceptually consiste
 
 # Installation
 
-Run using npx:
+Node.js 20 or newer is required.
 
-```
-npx @advantacode/brander
+Recommended for app projects:
+
+```bash
+npm install -D @advantacode/brander
 ```
 
-Or install globally:
+One-off usage with `npx`:
 
+```bash
+npx --package @advantacode/brander advantacode-brander
 ```
+
+Global install:
+
+```bash
 npm install -g @advantacode/brander
 ```
 
 Run:
 
-```
+```bash
 advantacode-brander
 ```
 
@@ -378,7 +386,7 @@ Add a script to the app:
 Or let Brander do that setup explicitly:
 
 ```bash
-npx advantacode-brander setup --out src/generated/brand --style src/style.css
+npx --package @advantacode/brander advantacode-brander setup --out src/generated/brand --style src/style.css
 ```
 
 That command:
@@ -450,28 +458,23 @@ Brander should be published with compiled `dist/` files included in the npm pack
 Current package behavior:
 
 * `dist/` stays in `.gitignore`
-* `package.json` includes `"files"` so npm publishes `dist/`
-* `prepack` runs `npm run build` before packaging or publishing
+* `npm run build` cleans and rebuilds compiled CLI files
+* `package.json` limits publish contents to compiled JavaScript plus docs and license
+* generated sample token artifacts are not published
 
 Verify what npm will publish:
 
 ```bash
-npm pack --dry-run
+npm run release:check
 ```
 
-Example:
+The dry run should list compiled files such as `dist/index.js`, `dist/generate-tokens.js`, adapter modules, `README.md`, and `LICENSE`, without shipping any local `dist/generated` output.
 
-```json
-{
-  "version": "0.0.1",
-  "generated": "2026-03-08T00:00:00.000Z",
-  "themes": ["light", "dark"],
-  "adapters": ["tailwind", "bootstrap", "figma"],
-  "artifacts": ["tokens.css", "tokens.scss", "tokens.ts", "tokens.json", "metadata.json"]
-}
-```
+---
 
-This is useful for CI, tooling, adapter discovery, and cache invalidation.
+# Support This Project
+
+If this package saves you time, consider supporting ongoing maintenance through GitHub Sponsors or Buy Me a Coffee once those links are available.
 
 ---
 

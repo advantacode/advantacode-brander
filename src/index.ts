@@ -2,19 +2,30 @@
 import { generateTokens, supportedFormats, type GenerationOptions, type OutputFormat } from "./generate-tokens.js";
 import { setupProject, type SetupOptions } from "./setup.js";
 
-const args = process.argv.slice(2);
-const command = resolveCommand(args);
-const commandArgs = command === "generate" ? args : args.slice(1);
+await main();
 
-if (commandArgs.includes("--help") || commandArgs.includes("-h")) {
-  console.log(getHelpText(command));
-  process.exit(0);
-}
+async function main() {
+  try {
+    const args = process.argv.slice(2);
+    const command = resolveCommand(args);
+    const commandArgs = command === "generate" ? args : args.slice(1);
 
-if (command === "generate") {
-  await generateTokens(parseGenerateArgs(commandArgs));
-} else {
-  await setupProject(parseSetupArgs(command, commandArgs));
+    if (commandArgs.includes("--help") || commandArgs.includes("-h")) {
+      console.log(getHelpText(command));
+      process.exit(0);
+    }
+
+    if (command === "generate") {
+      await generateTokens(parseGenerateArgs(commandArgs));
+      return;
+    }
+
+    await setupProject(parseSetupArgs(command, commandArgs));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`Error: ${message}`);
+    process.exit(1);
+  }
 }
 
 function resolveCommand(args: string[]) {
