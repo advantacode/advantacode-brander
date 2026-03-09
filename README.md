@@ -131,7 +131,7 @@ Brander supports environment variables via `.env`.
 Example:
 
 ```dotenv
-COMPANY_NAME=AdvantaCode
+COMPANY_NAME="My Company"
 CSS_PREFIX=
 PRIMARY_COLOR=amber-500
 SECONDARY_COLOR=zinc-700

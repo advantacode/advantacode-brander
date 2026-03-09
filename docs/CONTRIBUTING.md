@@ -14,11 +14,19 @@ External pull requests may not be accepted in order to maintain consistent archi
 
 Bug reports and feature suggestions are welcome.
 
-Please open an issue describing:
+Please use the GitHub issue templates when opening a bug report or feature request.
+
+Bug reports should include:
 
 - the problem
 - reproduction steps
 - expected behavior
+
+Feature requests should explain:
+
+- the problem you want to solve
+- the proposed solution
+- any alternatives considered
 
 ## Development Documentation
 
