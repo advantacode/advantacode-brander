@@ -5,6 +5,7 @@
   "type": "module",
   "files": [
     "dist/**/*.js",
+    "docs/*.md",
     "README.md",
     "LICENSE"
   ],

@@ -17,6 +17,14 @@ Brander is intentionally **framework-agnostic** and designed to integrate with e
 
 ---
 
+## Branding Note
+
+This document describes the software architecture and maintainer workflow for AdvantaCode Brander.
+
+Use of the software is governed by the MIT license. Use of the AdvantaCode name, logos, and branding is governed separately by [TRADEMARKS.md](TRADEMARKS.md).
+
+---
+
 # Core Architecture
 
 AdvantaCode Brander is built around a **token pipeline**.
@@ -455,6 +463,18 @@ Environment variables can override these values.
 
 ---
 
+# Development Workflow
+
+Contributor setup starts with a local clone of the repository.
+
+```
+git clone https://github.com/advantacode/advantacode-brander.git
+cd advantacode-brander
+npm install
+```
+
+---
+
 # Build Process
 
 TypeScript is compiled using:
@@ -471,56 +491,244 @@ dist/
 
 ---
 
+# Lint
+
+Lint the repository source and tests with:
+
+```
+npm run lint
+```
+
+Generated output folders such as `dist/brander` or `src/brander` are intentionally excluded.
+
+---
+
+# Test
+
+Run the integration suite against the built CLI:
+
+```
+npm test
+```
+
+The current test coverage includes:
+
+* `--help` CLI output
+* token generation into the default `dist/brander` folder
+* `setup` creating config, scripts, and stylesheet imports for `src/brander`
+* invalid config failures returning clean error messages
+
+---
+
+# Run Token Generator
+
+For local repository development, you can execute the generator directly with:
+
+```
+npm run tokens
+```
+
+This is useful for validating output changes while working inside the package itself.
+
+---
+
 # Local CLI Development
 
-Preferred local CLI testing uses `npm pack`, because it validates the same package contents npmjs consumers will install.
+You can run the compiled CLI locally without publishing:
 
-In the Brander repo:
+```
+npm run build
+npm run cli
+```
+
+Preferred consumer-flow testing uses `npm pack`, because it validates the same package contents npm consumers will install.
+
+---
+
+# Testing In Another Project
+
+The recommended real-world QA flow is to install Brander as a `devDependency` in another app using a packed tarball.
+
+Why `devDependency`:
+
+* Brander is a build-time code generation tool
+* the consuming app needs the generated token files at runtime, not the generator itself
+
+Build and pack Brander:
 
 ```
 npm run build
 npm pack --pack-destination /tmp
 ```
 
-In another project:
+Then install it into another project such as `advantacode-starter`:
 
 ```
+cd ../advantacode-starter
 npm i -D /tmp/advantacode-brander-0.1.0.tgz
 ```
 
-Then add an npm script such as:
+Add a script to the app:
+
+```json
+{
+  "scripts": {
+    "brand:generate": "advantacode-brander --out src/brander --format css,json,typescript --theme both"
+  }
+}
+```
+
+Or let Brander do that setup explicitly:
 
 ```
-"brand:generate": "advantacode-brander --out src/brander --format css,json,typescript --theme both"
+npx --package @advantacode/brander advantacode-brander setup --out src/brander --style src/style.css
 ```
 
-This tests:
+That command:
 
-* package contents
-* CLI resolution from `node_modules/.bin`
-* config discovery
-* generated output structure
-* integration with a consuming app
+* creates `brand.config.ts` if it does not exist
+* adds `brand:generate` to `package.json` if it is missing
+* adds token CSS imports to the chosen stylesheet
+* runs token generation
+
+What to validate:
+
+* the package installs cleanly as a `devDependency`
+* `advantacode-brander` resolves correctly from npm scripts
+* `brand.config.ts` is detected automatically
+* generated files land in the expected folder
+* rerunning generation replaces old outputs cleanly
+* the app builds after importing the generated CSS
+* light and dark theme variables resolve correctly
+* changing a color in `brand.config.ts` produces a visible change after regeneration
+
+Starter app note:
+
+* if the starter already defines overlapping theme variables, remove or replace that handwritten theme layer so the generated tokens become the single source of truth
+* `setup` is intended for an existing app repository, while `init` is intended for use by an outer scaffolding tool that already knows the app structure
+
+---
+
+# Publishing Notes
+
+Brander should be published with compiled `dist/` files included in the npm package, but local generated token output does not need to be committed.
+
+Current package behavior:
+
+* `dist/` stays in `.gitignore`
+* `npm run build` cleans and rebuilds compiled CLI files
+* `package.json` limits publish contents to compiled JavaScript plus docs and license
+* generated sample token artifacts are not published
+
+Verify what npm will publish:
+
+```
+npm run release:check
+```
+
+`release:check` runs linting, the test suite, and then the npm pack dry run. The tarball output should list compiled files such as `dist/index.js`, `dist/generate-tokens.js`, adapter modules, `README.md`, and `LICENSE`, without shipping any local `dist/brander` output.
+
+---
+
+# Recommended Consumer Project Structure
+
+One common consumer layout looks like this:
+
+```
+my-app
+│
+├─ brand.config.ts
+├─ .env
+│
+├─ dist
+│  └─ brander
+│     ├─ tokens.css
+│     ├─ tokens.scss
+│     ├─ tokens.ts
+│     ├─ tokens.json
+│     ├─ metadata.json
+│     ├─ themes
+│     │  ├─ light.css
+│     │  └─ dark.css
+│     └─ adapters
+│        ├─ tailwind.preset.ts
+│        ├─ bootstrap.variables.scss
+│        └─ figma.tokens.json
+│
+└─ src
+   └─ assets
+      └─ styles.css
+```
 
 ---
 
 # Dependencies
 
-Runtime dependency:
+Runtime dependencies:
 
 ```
 culori
+dotenv
+tsx
 ```
 
-Used for color conversions and OKLCH operations.
+These are used for color conversions, environment loading, and executing the TypeScript-based CLI entry.
 
 Development dependencies:
 
 ```
 typescript
-tsx
 eslint
+@typescript-eslint/parser
+@typescript-eslint/eslint-plugin
 @types/node
+```
+
+---
+
+# TypeScript Configuration
+
+The project compiles TypeScript using:
+
+```json
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "outDir": "dist",
+    "rootDir": "src",
+    "esModuleInterop": true,
+    "strict": true
+  },
+  "include": ["src"]
+}
+```
+
+---
+
+# CLI Entry Point
+
+The source CLI entry point lives at:
+
+```
+src/index.ts
+```
+
+It uses this executable header during development:
+
+```ts
+#!/usr/bin/env -S node --import tsx/esm
+```
+
+The published binary entry in `package.json` points to the compiled output:
+
+```json
+{
+  "bin": {
+    "advantacode-brander": "./dist/index.js"
+  }
+}
 ```
 
 ---
