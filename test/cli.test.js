@@ -64,6 +64,13 @@ test("prints help text", async () => {
   assert.match(result.stdout, /Usage:/);
 });
 
+test("prints the installed package version", async () => {
+  const result = await captureCliRun(["--version"]);
+
+  assert.equal(result.exitCode, 0);
+  assert.equal(result.stdout.trim(), "0.1.0");
+});
+
 test("generates requested artifacts into the default brander folder", async (t) => {
   const projectDir = createTempProject(t, {
     "brand.config.js": `export default {
@@ -89,6 +96,8 @@ test("generates requested artifacts into the default brander folder", async (t) 
   assert.match(lightCss, /--ac-primary:/);
   assert.deepEqual(metadata.themes, ["light"]);
   assert.equal(metadata.cssPrefix, "ac");
+  assert.deepEqual(metadata.adapters, []);
+  assert.deepEqual([...metadata.artifacts].sort(), metadata.artifacts);
 });
 
 test("setup uses the default src/brander output, adds a script, and patches the stylesheet", async (t) => {

@@ -14,6 +14,17 @@ AdvantaCode Brander uses **OKLCH color space** to generate perceptually consiste
 
 ---
 
+# Quick Start
+
+```bash
+npm install -D @advantacode/brander
+npx --package @advantacode/brander advantacode-brander setup --out src/brander --style src/style.css
+```
+
+This creates `brand.config.ts`, adds a `brand:generate` script, patches your stylesheet imports, and prepares the token output folder.
+
+---
+
 # Features
 
 * Single source of truth for brand tokens
@@ -58,6 +69,7 @@ CLI options:
 
 ```
 advantacode-brander --help
+advantacode-brander --version
 advantacode-brander --out src/tokens
 advantacode-brander --format css,tailwind,figma
 advantacode-brander --theme dark
@@ -72,6 +84,7 @@ Supported flags:
 * `--format <list>` limits output to specific formats: `all`, `css`, `json`, `typescript` or `ts`, `scss`, `tailwind`, `bootstrap`, `figma`
 * `--theme <value>` limits theme CSS output to `light`, `dark`, or `both`
 * `--prefix <value>` applies a CSS variable prefix like `ac`, producing variables such as `--ac-primary`
+* `--version`, `-v` prints the installed package version
 * `--help`, `-h` prints the CLI help text
 
 Setup commands:
