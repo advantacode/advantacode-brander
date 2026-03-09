@@ -3,6 +3,10 @@
   "version": "0.0.1",
   "description": "AdvantaCode Design System Brand Generator",
   "type": "module",
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "main": "dist/index.js",
   "exports": "./dist/index.js",
   "bin": {
@@ -11,7 +15,8 @@
   "scripts": {
     "build": "tsc",
     "cli": "node --import tsx/esm dist/index.js",
-    "tokens": "tsx src/generate-tokens.ts"
+    "tokens": "tsx src/generate-tokens.ts",
+    "prepack": "npm run build"
   },
   "license": "MIT",
   "author": "Anthony Penn",

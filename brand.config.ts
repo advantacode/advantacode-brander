@@ -1,6 +1,9 @@
 // This is set by the user in the .env file
 export default {
   name: process.env.COMPANY_NAME || "My Company",
+  css: {
+    prefix: process.env.CSS_PREFIX ?? ""
+  },
   colors: {
     primary: process.env.PRIMARY_COLOR || "amber-500",
     secondary: process.env.SECONDARY_COLOR || "zinc-700",

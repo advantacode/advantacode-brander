@@ -57,6 +57,18 @@ function parseCliArgs(args: string[]): GenerationOptions {
       continue;
     }
 
+    if (arg === "--prefix") {
+      const nextArg = args[index + 1];
+
+      if (nextArg === undefined) {
+        throw new Error("Missing value for --prefix.");
+      }
+
+      options.prefix = nextArg;
+      index += 1;
+      continue;
+    }
+
     if (arg.startsWith("-")) {
       throw new Error(`Unknown option "${arg}". Use --help to see supported flags.`);
     }
@@ -88,11 +100,13 @@ Options:
   --out <dir>             Output directory (default: dist/generated)
   --format <list>         Comma-separated formats: all, css, json, typescript|ts, scss, tailwind, bootstrap, figma
   --theme <value>         Theme CSS output: light, dark, or both (default: both)
+  --prefix <value>        CSS variable prefix. Use "" or omit for no prefix
 
 Examples:
   advantacode-brander
   advantacode-brander --out src/tokens
   advantacode-brander --format css,tailwind,figma
   advantacode-brander --theme dark
+  advantacode-brander --prefix ac
 `;
 }
