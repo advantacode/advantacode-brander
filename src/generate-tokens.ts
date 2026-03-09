@@ -40,9 +40,8 @@ type BrandConfig = {
   };
 };
 
-const defaultOutputDir = path.resolve(process.cwd(), "dist", "generated");
-
 export async function generateTokens(options: GenerationOptions = {}) {
+  const defaultOutputDir = resolveDefaultOutputDir();
   const outputDir = options.outputDir ? path.resolve(process.cwd(), options.outputDir) : defaultOutputDir;
   const theme = options.theme ?? "both";
   const formats = resolveFormats(options.formats);
@@ -247,6 +246,12 @@ function removeLegacyGeneratedFiles() {
   for (const legacyFile of legacyFiles) {
     fs.rmSync(legacyFile, { force: true });
   }
+
+  removeManagedArtifacts(path.resolve(process.cwd(), "dist", "generated"));
+}
+
+function resolveDefaultOutputDir() {
+  return path.resolve(process.cwd(), "dist", "brander");
 }
 
 function removeManagedArtifacts(outputDir: string) {

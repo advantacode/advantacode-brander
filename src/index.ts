@@ -184,7 +184,7 @@ Usage:
   advantacode-brander ${command} [options]
 
 Setup options:
-  --out <dir>             Output directory (default: src/generated/brand)
+  --out <dir>             Output directory (default: src/brander)
   --style <path>          Stylesheet file to patch with token imports
   --script-name <name>    package.json script to create (default: brand:generate)
   --skip-imports          Do not patch a stylesheet with token imports
@@ -199,7 +199,7 @@ Generation options:
 
 Examples:
   advantacode-brander ${command}
-  advantacode-brander ${command} --out src/generated/brand
+  advantacode-brander ${command} --out src/brander
   advantacode-brander ${command} --style src/style.css
   advantacode-brander ${command} --skip-imports --skip-generate
 `;
@@ -218,7 +218,7 @@ Commands:
 
 Options:
   -h, --help              Show this help output
-  --out <dir>             Output directory (default: dist/generated)
+  --out <dir>             Output directory (default: dist/brander)
   --format <list>         Comma-separated formats: all, css, json, typescript|ts, scss, tailwind, bootstrap, figma
   --theme <value>         Theme CSS output: light, dark, or both (default: both)
   --prefix <value>        CSS variable prefix. Use "" or omit for no prefix
@@ -226,7 +226,7 @@ Options:
 Examples:
   advantacode-brander
   advantacode-brander --out src/tokens
-  advantacode-brander setup --out src/generated/brand --style src/style.css
-  advantacode-brander init --out resources/generated/brand --skip-imports
+  advantacode-brander setup --out src/brander --style src/style.css
+  advantacode-brander init --out resources/brander --skip-imports
 `;
 }

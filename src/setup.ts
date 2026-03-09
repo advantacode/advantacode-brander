@@ -14,7 +14,7 @@ export type SetupOptions = GenerationOptions & {
   skipGenerate?: boolean;
 };
 
-const defaultSetupOutputDir = path.join("src", "generated", "brand");
+const defaultSetupOutputDir = path.join("src", "brander");
 const defaultStyleCandidates = [
   path.join("src", "style.css"),
   path.join("src", "main.css"),

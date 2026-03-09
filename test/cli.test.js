@@ -64,7 +64,7 @@ test("prints help text", async () => {
   assert.match(result.stdout, /Usage:/);
 });
 
-test("generates requested artifacts with config and prefix", async (t) => {
+test("generates requested artifacts into the default brander folder", async (t) => {
   const projectDir = createTempProject(t, {
     "brand.config.js": `export default {
   css: { prefix: "ac" },
@@ -76,14 +76,14 @@ test("generates requested artifacts with config and prefix", async (t) => {
 `
   });
 
-  const result = await captureCliRun(["--out", "generated", "--format", "css,json", "--theme", "light"], projectDir);
+  const result = await captureCliRun(["--format", "css,json", "--theme", "light"], projectDir);
 
   assert.equal(result.exitCode, 0, result.stderr);
-  assert.match(result.stdout, /tokens generated in generated/i);
+  assert.match(result.stdout, /tokens generated in dist\/brander/i);
 
-  const tokensCss = fs.readFileSync(path.join(projectDir, "generated", "tokens.css"), "utf8");
-  const lightCss = fs.readFileSync(path.join(projectDir, "generated", "themes", "light.css"), "utf8");
-  const metadata = JSON.parse(fs.readFileSync(path.join(projectDir, "generated", "metadata.json"), "utf8"));
+  const tokensCss = fs.readFileSync(path.join(projectDir, "dist", "brander", "tokens.css"), "utf8");
+  const lightCss = fs.readFileSync(path.join(projectDir, "dist", "brander", "themes", "light.css"), "utf8");
+  const metadata = JSON.parse(fs.readFileSync(path.join(projectDir, "dist", "brander", "metadata.json"), "utf8"));
 
   assert.match(tokensCss, /--ac-primary-500:/);
   assert.match(lightCss, /--ac-primary:/);
@@ -91,24 +91,24 @@ test("generates requested artifacts with config and prefix", async (t) => {
   assert.equal(metadata.cssPrefix, "ac");
 });
 
-test("setup creates config, adds script, and patches the stylesheet", async (t) => {
+test("setup uses the default src/brander output, adds a script, and patches the stylesheet", async (t) => {
   const projectDir = createTempProject(t, {
     "package.json": JSON.stringify({ name: "sample-app", private: true, scripts: {} }, null, 2),
     "src/style.css": "body { color: inherit; }\n"
   });
 
-  const result = await captureCliRun(["setup", "--out", "src/generated/brand", "--style", "src/style.css", "--skip-generate"], projectDir);
+  const result = await captureCliRun(["setup", "--style", "src/style.css", "--skip-generate"], projectDir);
 
   assert.equal(result.exitCode, 0, result.stderr);
 
   const packageJson = JSON.parse(fs.readFileSync(path.join(projectDir, "package.json"), "utf8"));
   const styleCss = fs.readFileSync(path.join(projectDir, "src", "style.css"), "utf8");
 
-  assert.equal(packageJson.scripts["brand:generate"], "advantacode-brander --out src/generated/brand");
+  assert.equal(packageJson.scripts["brand:generate"], "advantacode-brander --out src/brander");
   assert.ok(fs.existsSync(path.join(projectDir, "brand.config.ts")));
-  assert.match(styleCss, /@import '\.\/generated\/brand\/tokens\.css';/);
-  assert.match(styleCss, /@import '\.\/generated\/brand\/themes\/light\.css';/);
-  assert.match(styleCss, /@import '\.\/generated\/brand\/themes\/dark\.css';/);
+  assert.match(styleCss, /@import '\.\/brander\/tokens\.css';/);
+  assert.match(styleCss, /@import '\.\/brander\/themes\/light\.css';/);
+  assert.match(styleCss, /@import '\.\/brander\/themes\/dark\.css';/);
   assert.doesNotMatch(result.stdout, /Generated tokens in/);
 });
 
@@ -122,7 +122,7 @@ test("reports invalid config errors without a stack trace", async (t) => {
 `
   });
 
-  const result = await captureCliRun(["--out", "generated"], projectDir);
+  const result = await captureCliRun([], projectDir);
 
   assert.equal(result.exitCode, 1);
   assert.match(result.stderr, /Expected color "primary".*to be a string/);

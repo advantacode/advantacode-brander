@@ -326,18 +326,18 @@ Environment variables can override these values at runtime.
 The generator produces multiple outputs.
 
 ```
-dist/generated/
+dist/brander/
    tokens.css
    tokens.scss
    tokens.ts
    tokens.json
    metadata.json
 
-dist/generated/themes/
+dist/brander/themes/
    light.css
    dark.css
 
-dist/generated/adapters/
+dist/brander/adapters/
    tailwind.preset.ts
    bootstrap.variables.scss
    figma.tokens.json
@@ -366,7 +366,7 @@ These tokens can be used directly in CSS.
 The generator produces a Tailwind preset.
 
 ```
-dist/generated/adapters/tailwind.preset.ts
+dist/brander/adapters/tailwind.preset.ts
 ```
 
 Example:
@@ -392,8 +392,8 @@ SCSS-based frameworks can use native Sass variables.
 Generated file:
 
 ```
-dist/generated/tokens.scss
-dist/generated/adapters/bootstrap.variables.scss
+dist/brander/tokens.scss
+dist/brander/adapters/bootstrap.variables.scss
 ```
 
 Example:
@@ -413,7 +413,7 @@ $info: tokens.$info;
 Design tokens can be exported to JSON for use in design tools.
 
 ```
-dist/generated/adapters/figma.tokens.json
+dist/brander/adapters/figma.tokens.json
 ```
 
 Example:
@@ -485,13 +485,13 @@ npm pack --pack-destination /tmp
 In another project:
 
 ```
-npm i -D /tmp/advantacode-brander-0.0.1.tgz
+npm i -D /tmp/advantacode-brander-0.1.0.tgz
 ```
 
 Then add an npm script such as:
 
 ```
-"brand:generate": "advantacode-brander --out src/generated/brand --format css,json,typescript --theme both"
+"brand:generate": "advantacode-brander --out src/brander --format css,json,typescript --theme both"
 ```
 
 This tests:

@@ -1,6 +1,6 @@
 {
   "name": "@advantacode/brander",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "AdvantaCode Design System Brand Generator",
   "type": "module",
   "files": [
@@ -15,12 +15,13 @@
     "clean": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\"",
     "build": "npm run clean && tsc",
     "cli": "node --import tsx/esm dist/index.js",
+    "lint": "eslint --max-warnings=0 src test",
     "pretest": "npm run build",
     "test": "node --import tsx/esm --test",
-    "release:check": "npm test && npm pack --dry-run",
+    "release:check": "npm run lint && npm test && npm pack --dry-run",
     "tokens": "tsx src/generate-tokens.ts",
     "prepack": "npm run build",
-    "brand:generate": "advantacode-brander --out src/generated/brand"
+    "brand:generate": "advantacode-brander --out src/brander"
   },
   "license": "MIT",
   "author": "Anthony Penn",
@@ -44,6 +45,8 @@
   },
   "devDependencies": {
     "@types/node": "^25.3.3",
+    "@typescript-eslint/eslint-plugin": "^8.56.1",
+    "@typescript-eslint/parser": "^8.56.1",
     "eslint": "^8.0.0",
     "typescript": "^5.3.0"
   },
