@@ -4,9 +4,9 @@
     "module": "ESNext",
     "moduleResolution": "Node",
     "outDir": "dist",
-    "rootDir": ".",
+    "rootDir": "src",
     "esModuleInterop": true,
     "strict": true
   },
-  "include": ["src", "scripts"]
+  "include": ["src"]
 }

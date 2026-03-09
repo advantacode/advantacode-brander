@@ -60,9 +60,9 @@ These are generated from the base color using OKLCH lightness scaling.
 Example CSS output:
 
 ```
---ac-primary-50
---ac-primary-100
---ac-primary-200
+--primary-50
+--primary-100
+--primary-200
 ```
 
 Primitive tokens should **never be used directly by components**.
@@ -86,14 +86,15 @@ muted
 success
 warning
 danger
+info
 ```
 
 Example output:
 
 ```
---ac-background
---ac-text
---ac-primary
+--background
+--text
+--primary
 ```
 
 Components reference semantic tokens rather than primitives.
@@ -164,13 +165,13 @@ Example output:
 
 ```
 :root {
-  --ac-background: oklch(0.99 0.02 95);
-  --ac-text: oklch(0.20 0.02 95);
+  --background: oklch(0.99 0.02 95);
+  --text: oklch(0.20 0.02 95);
 }
 
 [data-theme="dark"] {
-  --ac-background: oklch(0.14 0.02 95);
-  --ac-text: oklch(0.95 0.02 95);
+  --background: oklch(0.14 0.02 95);
+  --text: oklch(0.95 0.02 95);
 }
 ```
 
@@ -201,6 +202,12 @@ CLI flow:
 ```
 CLI entry
    ↓
+command parsing
+   ↓
+generate | setup | init
+   ↓
+project setup helpers
+   ↓
 load configuration
    ↓
 generate token palette
@@ -209,6 +216,12 @@ generate semantic tokens
    ↓
 write platform outputs
 ```
+
+Command roles:
+
+* default generate command writes token artifacts only
+* `setup` configures an existing app by creating `brand.config.ts`, adding a package script, patching stylesheet imports, and then generating tokens
+* `init` uses the same setup flow but is intended to be called by a higher-level scaffolding tool such as `advantacode-init`
 
 ---
 
@@ -220,10 +233,10 @@ advantacode-brander
 ├─ src
 │  ├─ index.ts
 │  ├─ generate-tokens.ts
+│  ├─ setup.ts
+│  ├─ engine/
+│  ├─ adapters/
 │  └─ culori.d.ts
-│
-├─ tokens
-│  └─ colors.json
 │
 ├─ dist
 │
@@ -241,7 +254,7 @@ advantacode-brander
 src/
 ```
 
-Contains the CLI entry point and token generation logic.
+Contains the CLI entry point, token engine, and output adapters.
 
 ```
 src/index.ts
@@ -253,7 +266,25 @@ CLI entry script.
 src/generate-tokens.ts
 ```
 
-Core token generation logic.
+Generation orchestration and output writing.
+
+```
+src/setup.ts
+```
+
+Project setup helpers for `setup` and `init`.
+
+```
+src/engine/
+```
+
+Color parsing, palette generation, semantic mapping, and theme assembly.
+
+```
+src/adapters/
+```
+
+Output adapters for CSS, SCSS, Tailwind, TypeScript, JSON, and Figma.
 
 ```
 src/culori.d.ts
@@ -266,21 +297,27 @@ Type definitions for Culori.
 # Token Source Files
 
 ```
-tokens/colors.json
+brand.config.ts
 ```
 
-Defines base color inputs.
+Defines the user-provided color inputs.
 
 Example:
 
-```
-{
-  "primary": "#f59e0b",
-  "secondary": "#3f3f46"
-}
+```ts
+export default {
+  css: {
+    prefix: ""
+  },
+  colors: {
+    primary: "amber-500",
+    secondary: "zinc-700",
+    info: "sky-500"
+  }
+};
 ```
 
-This file is used by the generator to build the palette.
+Environment variables can override these values at runtime.
 
 ---
 
@@ -289,14 +326,20 @@ This file is used by the generator to build the palette.
 The generator produces multiple outputs.
 
 ```
-tokens/
+dist/brander/
    tokens.css
+   tokens.scss
    tokens.ts
    tokens.json
+   metadata.json
 
-framework/
+dist/brander/themes/
+   light.css
+   dark.css
+
+dist/brander/adapters/
    tailwind.preset.ts
-   quasar.variables.scss
+   bootstrap.variables.scss
    figma.tokens.json
 ```
 
@@ -310,7 +353,7 @@ Example:
 
 ```
 :root {
-  --ac-primary: oklch(0.65 0.2 45);
+  --primary: oklch(0.65 0.2 45);
 }
 ```
 
@@ -323,7 +366,7 @@ These tokens can be used directly in CSS.
 The generator produces a Tailwind preset.
 
 ```
-framework/tailwind.preset.ts
+dist/brander/adapters/tailwind.preset.ts
 ```
 
 Example:
@@ -333,7 +376,7 @@ export default {
   theme: {
     extend: {
       colors: {
-        primary: "var(--ac-primary)"
+        primary: "var(--primary)"
       }
     }
   }
@@ -342,21 +385,25 @@ export default {
 
 ---
 
-# Quasar Integration
+# SCSS / Bootstrap Integration
 
-Quasar uses SCSS variables.
+SCSS-based frameworks can use native Sass variables.
 
 Generated file:
 
 ```
-framework/quasar.variables.scss
+dist/brander/tokens.scss
+dist/brander/adapters/bootstrap.variables.scss
 ```
 
 Example:
 
 ```
-$primary: var(--ac-primary);
-$secondary: var(--ac-secondary);
+@use "../tokens.scss" as tokens;
+
+$primary: tokens.$primary;
+$secondary: tokens.$secondary;
+$info: tokens.$info;
 ```
 
 ---
@@ -366,7 +413,7 @@ $secondary: var(--ac-secondary);
 Design tokens can be exported to JSON for use in design tools.
 
 ```
-framework/figma.tokens.json
+dist/brander/adapters/figma.tokens.json
 ```
 
 Example:
@@ -426,19 +473,34 @@ dist/
 
 # Local CLI Development
 
-To test the CLI locally:
+Preferred local CLI testing uses `npm pack`, because it validates the same package contents npmjs consumers will install.
+
+In the Brander repo:
 
 ```
-npm link
+npm run build
+npm pack --pack-destination /tmp
 ```
 
-Then run:
+In another project:
 
 ```
-advantacode-brander
+npm i -D /tmp/advantacode-brander-0.1.0.tgz
 ```
 
-This simulates a globally installed CLI.
+Then add an npm script such as:
+
+```
+"brand:generate": "advantacode-brander --out src/brander --format css,json,typescript --theme both"
+```
+
+This tests:
+
+* package contents
+* CLI resolution from `node_modules/.bin`
+* config discovery
+* generated output structure
+* integration with a consuming app
 
 ---
 
@@ -470,10 +532,9 @@ Planned improvements include:
 * automatic accessible color contrast generation
 * dark mode optimization
 * design token specification support
-* CLI configuration flags
-* custom output directories
 * plugin architecture
 * framework adapters
+* optional semantic packs for charts, dashboards, or app shells
 
 ---
 
@@ -483,8 +544,8 @@ Brander is designed to integrate into the larger AdvantaCode ecosystem.
 
 ```
 @advantacode/brander
-@advantacode/init
-@advantacode/starter
+advantacode-init
+advantacode-starter
 @advantacode/ui
 ```
 
