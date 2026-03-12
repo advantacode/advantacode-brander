@@ -115,13 +115,32 @@ test("setup uses the default src/brander output, adds a script, creates brand.cs
   const brandCss = fs.readFileSync(path.join(projectDir, "src", "brand.css"), "utf8");
   const styleCss = fs.readFileSync(path.join(projectDir, "src", "style.css"), "utf8");
 
-  assert.equal(packageJson.scripts["brand:generate"], "advantacode-brander generate --out src/brander");
+  assert.equal(packageJson.scripts["brand:generate"], "advantacode-brander --out src/brander --style src/style.css");
   assert.ok(fs.existsSync(path.join(projectDir, "brand.config.js")));
   assert.match(styleCss, /@import '\.\/brand\.css';/);
   assert.match(brandCss, /@import '\.\/brander\/tokens\.css';/);
   assert.match(brandCss, /@import '\.\/brander\/themes\/light\.css';/);
   assert.match(brandCss, /@import '\.\/brander\/themes\/dark\.css';/);
   assert.doesNotMatch(result.stdout, /Generated tokens in/);
+});
+
+test("generate supports --style so repeated runs keep stylesheet wiring aligned", async (t) => {
+  const projectDir = createTempProject(t, {
+    "src/styles.css": "body { color: inherit; }\n"
+  });
+
+  const result = await captureCliRun(["--out", "src/assets/brander", "--style", "src/styles.css", "--format", "css"], projectDir);
+
+  assert.equal(result.exitCode, 0, result.stderr);
+
+  const brandCss = fs.readFileSync(path.join(projectDir, "src", "brand.css"), "utf8");
+  const styleCss = fs.readFileSync(path.join(projectDir, "src", "styles.css"), "utf8");
+
+  assert.match(result.stdout, /tokens generated in src\/assets\/brander/i);
+  assert.match(styleCss, /@import '\.\/brand\.css';/);
+  assert.match(brandCss, /@import '\.\/assets\/brander\/tokens\.css';/);
+  assert.match(brandCss, /@import '\.\/assets\/brander\/themes\/light\.css';/);
+  assert.match(brandCss, /@import '\.\/assets\/brander\/themes\/dark\.css';/);
 });
 
 test("reports invalid config errors without a stack trace", async (t) => {
