@@ -22,7 +22,7 @@ npx --package @advantacode/brander advantacode-brander setup --out src/brander -
 This creates `brand.config.ts`, adds a `brand:generate` script, patches your stylesheet imports, and prepares the token output folder.
 
 During setup, Brander creates `brand.css` next to your main stylesheet, writes token/theme imports there, and adds a single `@import './brand.css';` to your main stylesheet.
-The generated `brand:generate` script uses `advantacode-brander generate` and includes any setup generation flags (`--out`, `--format`, `--theme`, `--prefix`) so repeat runs keep writing to the same target.
+The generated `brand:generate` script preserves the setup generation flags you used, including `--out` and `--style`, so repeat runs keep writing to the same target and refresh the stylesheet wiring when needed.
 
 AdvantaCode Brander generates design tokens and framework adapters from a single brand configuration file. It allows applications, design systems, and design tools to share a consistent source of truth for colors and semantic tokens.
 
@@ -87,6 +87,7 @@ Supported flags:
 * `--format <list>` limits output to specific formats: `all`, `css`, `json`, `typescript` or `ts`, `scss`, `tailwind`, `bootstrap`, `figma`
 * `--theme <value>` limits theme CSS output to `light`, `dark`, or `both`
 * `--prefix <value>` applies a CSS variable prefix like `ac`, producing variables such as `--ac-primary`
+* `--style <path>` refreshes `brand.css` and the main stylesheet import during normal generation so package scripts can keep setup paths aligned
 * `--version`, `-v` prints the installed package version
 * `--help`, `-h` prints the CLI help text
 
@@ -279,6 +280,18 @@ bg-primary
 text-danger
 border-secondary
 ```
+
+CommonJS Tailwind config:
+
+```js
+const brandPreset = require("./src/assets/brander/adapters/tailwind.preset");
+
+module.exports = {
+  presets: [brandPreset]
+};
+```
+
+This step should stay documented rather than auto-patched for now. Unlike stylesheet imports, Tailwind config shape varies across projects between CJS, ESM, TS, Vite plugins, and newer Tailwind entrypoints, so automatic mutation is riskier and easier to get wrong.
 
 ## Bootstrap / SCSS Frameworks
 
