@@ -10,7 +10,7 @@ export async function runCli(args: string[]): Promise<number> {
     }
 
     const command = resolveCommand(args);
-    const commandArgs = command === 'generate' ? args : args.slice(1);
+    const commandArgs = command === "generate" && args[0] === "generate" ? args.slice(1) : command === "generate" ? args : args.slice(1);
 
     if (commandArgs.includes('--help') || commandArgs.includes('-h')) {
       console.log(getHelpText(command));
@@ -40,6 +40,10 @@ function resolveCommand(args: string[]) {
   const firstArg = args[0];
 
   if (!firstArg || firstArg.startsWith("-")) {
+    return "generate" as const;
+  }
+
+  if (firstArg === "generate") {
     return "generate" as const;
   }
 
@@ -184,11 +188,11 @@ Usage:
 
 Setup options:
   --out <dir>             Output directory (default: src/brander)
-  --style <path>          Stylesheet file to patch with token imports
+  --style <path>          Main stylesheet file to patch with a brand.css import
   --script-name <name>    package.json script to create (default: brand:generate)
-  --skip-imports          Do not patch a stylesheet with token imports
+  --skip-imports          Do not create/update brand.css or patch stylesheet imports
   --skip-script           Do not add a package.json script
-  --skip-config           Do not create brand.config.ts when missing
+  --skip-config           Do not create brand.config.js when missing
   --skip-generate         Do not run token generation after setup
 
 Generation options:

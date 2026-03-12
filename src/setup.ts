@@ -15,6 +15,7 @@ export type SetupOptions = GenerationOptions & {
 };
 
 const defaultSetupOutputDir = path.join("src", "brander");
+const brandStylesheetFileName = "brand.css";
 const defaultStyleCandidates = [
   path.join("src", "style.css"),
   path.join("src", "main.css"),
@@ -113,22 +114,61 @@ function ensureStyleImports(stylePath: string | undefined, outputDir: string) {
     };
   }
 
+  const brandStylesheetPath = path.join(path.dirname(resolvedStylePath), brandStylesheetFileName);
+  const brandStylesheetImports = [
+    buildImportLine(brandStylesheetPath, path.join(outputDir, "tokens.css")),
+    buildImportLine(brandStylesheetPath, path.join(outputDir, "themes", "light.css")),
+    buildImportLine(brandStylesheetPath, path.join(outputDir, "themes", "dark.css"))
+  ];
+  const brandStylesheetContents = `${brandStylesheetImports.join("\n")}\n`;
+  const hasBrandStylesheet = fs.existsSync(brandStylesheetPath);
+  const existingBrandStylesheet = hasBrandStylesheet ? fs.readFileSync(brandStylesheetPath, "utf8") : "";
+
+  if (existingBrandStylesheet !== brandStylesheetContents) {
+    fs.writeFileSync(brandStylesheetPath, brandStylesheetContents);
+  }
+
   const styleFileContents = fs.readFileSync(resolvedStylePath, "utf8");
-  const importLines = [
+  const legacyTokenImports = [
     buildImportLine(resolvedStylePath, path.join(outputDir, "tokens.css")),
     buildImportLine(resolvedStylePath, path.join(outputDir, "themes", "light.css")),
     buildImportLine(resolvedStylePath, path.join(outputDir, "themes", "dark.css"))
   ];
-  const missingImports = importLines.filter((importLine) => !styleFileContents.includes(importLine));
+  const brandImportLine = buildImportLine(resolvedStylePath, brandStylesheetPath);
+  const styleLineEnding = styleFileContents.includes("\r\n") ? "\r\n" : "\n";
+  const styleLines = styleFileContents.split(/\r?\n/);
+  const legacyImportCandidates = new Set<string>();
 
-  if (missingImports.length === 0) {
-    return { message: `Kept existing token imports in ${path.relative(process.cwd(), resolvedStylePath)}.` };
+  for (const importLine of legacyTokenImports) {
+    legacyImportCandidates.add(importLine);
+    legacyImportCandidates.add(importLine.replace(/'/g, '"'));
   }
 
-  const nextContents = `${missingImports.join("\n")}\n${styleFileContents}`;
-  fs.writeFileSync(resolvedStylePath, nextContents);
+  let nextStyleLines = styleLines.filter((line) => !legacyImportCandidates.has(line.trim()));
+  const hasBrandImport = nextStyleLines.some(
+    (line) => line.trim() === brandImportLine || line.trim() === brandImportLine.replace(/'/g, '"')
+  );
 
-  return { message: `Added token imports to ${path.relative(process.cwd(), resolvedStylePath)}.` };
+  if (!hasBrandImport) {
+    nextStyleLines = [brandImportLine, ...nextStyleLines];
+  }
+
+  while (nextStyleLines[0] === "") {
+    nextStyleLines = nextStyleLines.slice(1);
+  }
+
+  const nextStyleContents = `${nextStyleLines.join(styleLineEnding)}${styleLineEnding}`;
+
+  if (nextStyleContents !== styleFileContents) {
+    fs.writeFileSync(resolvedStylePath, nextStyleContents);
+  }
+
+  const brandStylesheetStatus = hasBrandStylesheet ? "Updated" : "Created";
+  const mainStylesheetStatus = nextStyleContents === styleFileContents ? "Kept" : "Updated";
+
+  return {
+    message: `${brandStylesheetStatus} ${path.relative(process.cwd(), brandStylesheetPath)} and ${mainStylesheetStatus.toLowerCase()} ${path.relative(process.cwd(), resolvedStylePath)} to import it.`
+  };
 }
 
 function resolveStylePath(stylePath: string | undefined) {
@@ -169,7 +209,7 @@ function buildImportLine(stylePath: string, targetPath: string) {
 }
 
 function buildGenerateCommand(options: GenerationOptions) {
-  const commandParts = ["advantacode-brander"];
+  const commandParts = ["advantacode-brander", "generate"];
   const outputDir = options.outputDir ?? defaultSetupOutputDir;
 
   commandParts.push("--out", outputDir);
