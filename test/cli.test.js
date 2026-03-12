@@ -66,9 +66,10 @@ test("prints help text", async () => {
 
 test("prints the installed package version", async () => {
   const result = await captureCliRun(["--version"]);
+  const packageJson = JSON.parse(fs.readFileSync(path.join(repoRoot, "package.json"), "utf8"));
 
   assert.equal(result.exitCode, 0);
-  assert.equal(result.stdout.trim(), "0.1.0");
+  assert.equal(result.stdout.trim(), packageJson.version);
 });
 
 test("generates requested artifacts into the default brander folder", async (t) => {
@@ -100,7 +101,7 @@ test("generates requested artifacts into the default brander folder", async (t) 
   assert.deepEqual([...metadata.artifacts].sort(), metadata.artifacts);
 });
 
-test("setup uses the default src/brander output, adds a script, and patches the stylesheet", async (t) => {
+test("setup uses the default src/brander output, adds a script, creates brand.css, and patches the stylesheet", async (t) => {
   const projectDir = createTempProject(t, {
     "package.json": JSON.stringify({ name: "sample-app", private: true, scripts: {} }, null, 2),
     "src/style.css": "body { color: inherit; }\n"
@@ -111,13 +112,15 @@ test("setup uses the default src/brander output, adds a script, and patches the 
   assert.equal(result.exitCode, 0, result.stderr);
 
   const packageJson = JSON.parse(fs.readFileSync(path.join(projectDir, "package.json"), "utf8"));
+  const brandCss = fs.readFileSync(path.join(projectDir, "src", "brand.css"), "utf8");
   const styleCss = fs.readFileSync(path.join(projectDir, "src", "style.css"), "utf8");
 
-  assert.equal(packageJson.scripts["brand:generate"], "advantacode-brander --out src/brander");
-  assert.ok(fs.existsSync(path.join(projectDir, "brand.config.ts")));
-  assert.match(styleCss, /@import '\.\/brander\/tokens\.css';/);
-  assert.match(styleCss, /@import '\.\/brander\/themes\/light\.css';/);
-  assert.match(styleCss, /@import '\.\/brander\/themes\/dark\.css';/);
+  assert.equal(packageJson.scripts["brand:generate"], "advantacode-brander generate --out src/brander");
+  assert.ok(fs.existsSync(path.join(projectDir, "brand.config.js")));
+  assert.match(styleCss, /@import '\.\/brand\.css';/);
+  assert.match(brandCss, /@import '\.\/brander\/tokens\.css';/);
+  assert.match(brandCss, /@import '\.\/brander\/themes\/light\.css';/);
+  assert.match(brandCss, /@import '\.\/brander\/themes\/dark\.css';/);
   assert.doesNotMatch(result.stdout, /Generated tokens in/);
 });
 

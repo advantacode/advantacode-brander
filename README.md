@@ -21,6 +21,9 @@ npx --package @advantacode/brander advantacode-brander setup --out src/brander -
 
 This creates `brand.config.ts`, adds a `brand:generate` script, patches your stylesheet imports, and prepares the token output folder.
 
+During setup, Brander creates `brand.css` next to your main stylesheet, writes token/theme imports there, and adds a single `@import './brand.css';` to your main stylesheet.
+The generated `brand:generate` script uses `advantacode-brander generate` and includes any setup generation flags (`--out`, `--format`, `--theme`, `--prefix`) so repeat runs keep writing to the same target.
+
 AdvantaCode Brander generates design tokens and framework adapters from a single brand configuration file. It allows applications, design systems, and design tools to share a consistent source of truth for colors and semantic tokens.
 
 For architecture, development, testing, and publishing workflows, see [docs/TECH_OVERVIEW.md](docs/TECH_OVERVIEW.md).
@@ -89,7 +92,7 @@ Supported flags:
 
 Setup commands:
 
-* `advantacode-brander setup` configures an existing app by creating `brand.config.ts` if needed, adding a `brand:generate` script, patching a stylesheet with token imports, and generating tokens
+* `advantacode-brander setup` configures an existing app by creating `brand.config.ts` if needed, adding a `brand:generate` script, creating or updating `brand.css` with token imports, patching a stylesheet to import `brand.css`, and generating tokens
 * `advantacode-brander init` runs the same setup flow for a freshly created app and is intended to be called by a higher-level scaffolder such as `advantacode-init`
 
 ## Configuration
