@@ -1,31 +1,23 @@
-#!/usr/bin/env node
-import fs from "fs";
-import { fileURLToPath, pathToFileURL } from "url";
-import { generateTokens, supportedFormats, type GenerationOptions, type OutputFormat } from "./generate-tokens.js";
-import { setupProject, type SetupOptions } from "./setup.js";
+import fs from 'fs';
+import { generateTokens, supportedFormats, type GenerationOptions, type OutputFormat } from './generate-tokens.js';
+import { setupProject, type SetupOptions } from './setup.js';
 
-const packageVersion = loadPackageVersion();
-
-if (isCliEntryPoint()) {
-  process.exit(await runCli(process.argv.slice(2)));
-}
-
-export async function runCli(args: string[]) {
+export async function runCli(args: string[]): Promise<number> {
   try {
-    if (args.includes("--version") || args.includes("-v")) {
-      console.log(packageVersion);
+    if (args.includes('--version') || args.includes('-v')) {
+      console.log(loadPackageVersion());
       return 0;
     }
 
     const command = resolveCommand(args);
-    const commandArgs = command === "generate" ? args : args.slice(1);
+    const commandArgs = command === 'generate' ? args : args.slice(1);
 
-    if (commandArgs.includes("--help") || commandArgs.includes("-h")) {
+    if (commandArgs.includes('--help') || commandArgs.includes('-h')) {
       console.log(getHelpText(command));
       return 0;
     }
 
-    if (command === "generate") {
+    if (command === 'generate') {
       await generateTokens(parseGenerateArgs(commandArgs));
       return 0;
     }
@@ -33,26 +25,15 @@ export async function runCli(args: string[]) {
     await setupProject(parseSetupArgs(command, commandArgs));
     return 0;
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error(`Error: ${message}`);
+    console.error(`Error: ${error instanceof Error ? error.message : String(error)}`);
     return 1;
   }
 }
 
-function isCliEntryPoint() {
-  const entryPoint = process.argv[1];
-
-  return Boolean(entryPoint) && pathToFileURL(entryPoint).href === import.meta.url;
-}
-
-function loadPackageVersion() {
-  const packageJsonPath = fileURLToPath(new URL("../package.json", import.meta.url));
-
-  if (!fs.existsSync(packageJsonPath)) {
-    return "0.0.0";
-  }
-
-  return ((JSON.parse(fs.readFileSync(packageJsonPath, "utf8")) as { version?: string }).version ?? "0.0.0");
+function loadPackageVersion(): string {
+  const packageJsonPath = new URL('../package.json', import.meta.url);
+  if (!fs.existsSync(packageJsonPath)) return '0.0.0';
+  return JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8')).version ?? '0.0.0';
 }
 
 function resolveCommand(args: string[]) {

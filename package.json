@@ -10,19 +10,20 @@
     "LICENSE"
   ],
   "bin": {
-    "advantacode-brander": "./dist/index.js"
+    "advantacode-brander": "./dist/cli-wrapper.js"
   },
   "scripts": {
     "clean": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\"",
-    "build": "npm run clean && tsc",
-    "cli": "node --import tsx/esm dist/index.js",
+    "build": "npm run clean && tsc && chmod +x dist/cli-wrapper.js",
+    "cli": "node --import tsx/esm dist/cli-wrapper.js",
     "lint": "eslint --max-warnings=0 src test",
     "pretest": "npm run build",
     "test": "node --import tsx/esm --test",
     "release:check": "npm run lint && npm test && npm pack --dry-run",
     "tokens": "tsx src/generate-tokens.ts",
     "prepack": "npm run build",
-    "brand:generate": "advantacode-brander --out src/brander"
+    "brand:generate": "advantacode-brander --out src/brander",
+    "brand:test": "node ./dist/cli-wrapper.js --out src/brander"
   },
   "license": "MIT",
   "author": "Anthony Penn",
