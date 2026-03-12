@@ -1,6 +1,6 @@
 {
   "name": "@advantacode/brander",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "AdvantaCode Design System Brand Generator",
   "type": "module",
   "files": [
