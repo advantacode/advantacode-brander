@@ -1,6 +1,11 @@
 import fs from 'fs';
+import path from 'path';
 import { generateTokens, supportedFormats, type GenerationOptions, type OutputFormat } from './generate-tokens.js';
-import { setupProject, type SetupOptions } from './setup.js';
+import { setupProject, syncStyleImports, type SetupOptions } from './setup.js';
+
+type GenerateCommandOptions = GenerationOptions & {
+  stylePath?: string;
+};
 
 export async function runCli(args: string[]): Promise<number> {
   try {
@@ -18,7 +23,7 @@ export async function runCli(args: string[]): Promise<number> {
     }
 
     if (command === 'generate') {
-      await generateTokens(parseGenerateArgs(commandArgs));
+      await runGenerateCommand(parseGenerateArgs(commandArgs));
       return 0;
     }
 
@@ -54,8 +59,16 @@ function resolveCommand(args: string[]) {
   throw new Error(`Unknown command "${firstArg}". Use --help to see supported commands.`);
 }
 
-function parseGenerateArgs(args: string[]): GenerationOptions {
-  const options: GenerationOptions = {};
+async function runGenerateCommand(options: GenerateCommandOptions) {
+  await generateTokens(options);
+
+  if (options.stylePath) {
+    syncStyleImports(options.stylePath, options.outputDir ?? path.join('dist', 'brander'));
+  }
+}
+
+function parseGenerateArgs(args: string[]): GenerateCommandOptions {
+  const options: GenerateCommandOptions = {};
 
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
@@ -88,6 +101,12 @@ function parseGenerateArgs(args: string[]): GenerationOptions {
 
     if (arg === "--prefix") {
       options.prefix = getNextArgValue(arg, args, index);
+      index += 1;
+      continue;
+    }
+
+    if (arg === "--style") {
+      options.stylePath = getNextArgValue(arg, args, index);
       index += 1;
       continue;
     }
@@ -226,10 +245,12 @@ Options:
   --format <list>         Comma-separated formats: all, css, json, typescript|ts, scss, tailwind, bootstrap, figma
   --theme <value>         Theme CSS output: light, dark, or both (default: both)
   --prefix <value>        CSS variable prefix. Use "" or omit for no prefix
+  --style <path>          Main stylesheet file to patch with a brand.css import
 
 Examples:
   advantacode-brander
   advantacode-brander --out src/tokens
+  advantacode-brander --out src/brander --style src/style.css
   advantacode-brander setup --out src/brander --style src/style.css
   advantacode-brander init --out resources/brander --skip-imports
 `;

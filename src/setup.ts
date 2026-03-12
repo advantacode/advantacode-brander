@@ -64,6 +64,10 @@ export async function setupProject(options: SetupOptions) {
   }
 }
 
+export function syncStyleImports(stylePath: string | undefined, outputDir: string) {
+  return ensureStyleImports(stylePath, outputDir);
+}
+
 function ensureBrandConfig() {
   const configPath = path.resolve(process.cwd(), "brand.config.js");
 
@@ -208,8 +212,8 @@ function buildImportLine(stylePath: string, targetPath: string) {
   return `@import '${normalizedImportPath}';`;
 }
 
-function buildGenerateCommand(options: GenerationOptions) {
-  const commandParts = ["advantacode-brander", "generate"];
+function buildGenerateCommand(options: SetupOptions) {
+  const commandParts = ["advantacode-brander"];
   const outputDir = options.outputDir ?? defaultSetupOutputDir;
 
   commandParts.push("--out", outputDir);
@@ -224,6 +228,10 @@ function buildGenerateCommand(options: GenerationOptions) {
 
   if (options.prefix) {
     commandParts.push("--prefix", options.prefix);
+  }
+
+  if (options.stylePath) {
+    commandParts.push("--style", options.stylePath);
   }
 
   return commandParts.join(" ");
