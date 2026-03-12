@@ -64,14 +64,14 @@ export async function setupProject(options: SetupOptions) {
 }
 
 function ensureBrandConfig() {
-  const configPath = path.resolve(process.cwd(), "brand.config.ts");
+  const configPath = path.resolve(process.cwd(), "brand.config.js");
 
   if (fs.existsSync(configPath)) {
-    return { message: "Kept existing brand.config.ts." };
+    return { message: "Kept existing brand.config.js." };
   }
 
   fs.writeFileSync(configPath, getDefaultBrandConfigTemplate());
-  return { message: "Created brand.config.ts." };
+  return { message: "Created brand.config.js." };
 }
 
 function ensurePackageScript(scriptName: string, command: string) {

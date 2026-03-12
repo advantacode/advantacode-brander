@@ -117,8 +117,14 @@ async function loadBrandConfig(): Promise<BrandConfig> {
   }
 
   try {
+    // enable TS config loading if needed
+    if (configPath.endsWith(".ts") || configPath.endsWith(".mts") || configPath.endsWith(".cts")) {
+      await import("tsx/esm");
+    }
+
     const importedConfig = await import(pathToFileURL(configPath).href);
     return parseBrandConfig(importedConfig.default ?? importedConfig, configPath);
+
   } catch (error) {
     throw new Error(`Failed to load ${path.basename(configPath)}.\n${String(error)}`);
   }
