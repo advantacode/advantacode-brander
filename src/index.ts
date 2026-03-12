@@ -1,4 +1,4 @@
-#!/usr/bin/env -S node --import tsx/esm
+#!/usr/bin/env node
 import fs from "fs";
 import { fileURLToPath, pathToFileURL } from "url";
 import { generateTokens, supportedFormats, type GenerationOptions, type OutputFormat } from "./generate-tokens.js";
