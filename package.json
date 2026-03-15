@@ -22,8 +22,8 @@
     "release:check": "npm run lint && npm test && npm pack --dry-run",
     "tokens": "tsx src/generate-tokens.ts",
     "prepack": "npm run build",
-    "brand:generate": "advantacode-brander --out src/brander",
-    "brand:test": "node ./dist/cli-wrapper.js --out src/brander"
+    "brand:generate": "advantacode-brander",
+    "brand:test": "node ./dist/cli-wrapper.js"
   },
   "license": "MIT",
   "author": "Anthony Penn",

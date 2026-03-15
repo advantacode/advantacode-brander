@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { generateTokens, type GenerationOptions } from "./generate-tokens.js";
+import { ensureStyleImports, resolveStylePath, syncStyleImports as syncStyleImportsImpl } from "./style-imports.js";
 
 export type SetupCommand = "setup" | "init";
 
@@ -15,35 +16,39 @@ export type SetupOptions = GenerationOptions & {
 };
 
 const defaultSetupOutputDir = path.join("src", "brander");
-const brandStylesheetFileName = "brand.css";
-const defaultStyleCandidates = [
-  path.join("src", "style.css"),
-  path.join("src", "main.css"),
-  path.join("src", "index.css"),
-  path.join("src", "app.css"),
-  path.join("resources", "css", "app.css")
-];
 
 export async function setupProject(options: SetupOptions) {
   const resolvedOutputDir = options.outputDir ?? defaultSetupOutputDir;
   const scriptName = options.scriptName ?? "brand:generate";
   const notes: string[] = [];
+  const resolvedStylePath = !options.skipImports ? resolveStylePath(options.stylePath) : undefined;
+  const configFormats = options.formats && options.formats.length > 0 ? options.formats : undefined;
 
   if (!options.skipConfig) {
-    const configResult = ensureBrandConfig();
+    const configResult = ensureBrandConfig({
+      outputDir: resolvedOutputDir,
+      styleFile: resolvedStylePath ? normalizeConfigPath(path.relative(process.cwd(), resolvedStylePath)) : undefined,
+      formats: configFormats,
+      adapters: !configFormats ? ["tailwind"] : undefined,
+      prefix: options.prefix,
+      theme: options.theme
+    });
     notes.push(configResult.message);
   }
 
   if (!options.skipScript) {
     const scriptResult = ensurePackageScript(scriptName, buildGenerateCommand({
-      ...options,
-      outputDir: resolvedOutputDir
+      ...options
     }));
     notes.push(scriptResult.message);
   }
 
   if (!options.skipImports) {
-    const styleResult = ensureStyleImports(options.stylePath, resolvedOutputDir);
+    const styleResult = ensureStyleImports(
+      resolvedStylePath ? normalizeConfigPath(path.relative(process.cwd(), resolvedStylePath)) : undefined,
+      resolvedOutputDir,
+      options.theme ?? "both"
+    );
     notes.push(styleResult.message);
   }
 
@@ -65,18 +70,7 @@ export async function setupProject(options: SetupOptions) {
 }
 
 export function syncStyleImports(stylePath: string | undefined, outputDir: string) {
-  return ensureStyleImports(stylePath, outputDir);
-}
-
-function ensureBrandConfig() {
-  const configPath = path.resolve(process.cwd(), "brand.config.js");
-
-  if (fs.existsSync(configPath)) {
-    return { message: "Kept existing brand.config.js." };
-  }
-
-  fs.writeFileSync(configPath, getDefaultBrandConfigTemplate());
-  return { message: "Created brand.config.js." };
+  return syncStyleImportsImpl(stylePath, outputDir);
 }
 
 function ensurePackageScript(scriptName: string, command: string) {
@@ -108,140 +102,81 @@ function ensurePackageScript(scriptName: string, command: string) {
   return { message: `Added "${scriptName}" script to package.json.` };
 }
 
-function ensureStyleImports(stylePath: string | undefined, outputDir: string) {
-  const resolvedStylePath = resolveStylePath(stylePath);
-
-  if (!resolvedStylePath) {
-    return {
-      message:
-        "Skipped stylesheet imports because no stylesheet was found. Use --style <path> to target a file explicitly."
-    };
-  }
-
-  const brandStylesheetPath = path.join(path.dirname(resolvedStylePath), brandStylesheetFileName);
-  const brandStylesheetImports = [
-    buildImportLine(brandStylesheetPath, path.join(outputDir, "tokens.css")),
-    buildImportLine(brandStylesheetPath, path.join(outputDir, "themes", "light.css")),
-    buildImportLine(brandStylesheetPath, path.join(outputDir, "themes", "dark.css"))
-  ];
-  const brandStylesheetContents = `${brandStylesheetImports.join("\n")}\n`;
-  const hasBrandStylesheet = fs.existsSync(brandStylesheetPath);
-  const existingBrandStylesheet = hasBrandStylesheet ? fs.readFileSync(brandStylesheetPath, "utf8") : "";
-
-  if (existingBrandStylesheet !== brandStylesheetContents) {
-    fs.writeFileSync(brandStylesheetPath, brandStylesheetContents);
-  }
-
-  const styleFileContents = fs.readFileSync(resolvedStylePath, "utf8");
-  const legacyTokenImports = [
-    buildImportLine(resolvedStylePath, path.join(outputDir, "tokens.css")),
-    buildImportLine(resolvedStylePath, path.join(outputDir, "themes", "light.css")),
-    buildImportLine(resolvedStylePath, path.join(outputDir, "themes", "dark.css"))
-  ];
-  const brandImportLine = buildImportLine(resolvedStylePath, brandStylesheetPath);
-  const styleLineEnding = styleFileContents.includes("\r\n") ? "\r\n" : "\n";
-  const styleLines = styleFileContents.split(/\r?\n/);
-  const legacyImportCandidates = new Set<string>();
-
-  for (const importLine of legacyTokenImports) {
-    legacyImportCandidates.add(importLine);
-    legacyImportCandidates.add(importLine.replace(/'/g, '"'));
-  }
-
-  let nextStyleLines = styleLines.filter((line) => !legacyImportCandidates.has(line.trim()));
-  const hasBrandImport = nextStyleLines.some(
-    (line) => line.trim() === brandImportLine || line.trim() === brandImportLine.replace(/'/g, '"')
-  );
-
-  if (!hasBrandImport) {
-    nextStyleLines = [brandImportLine, ...nextStyleLines];
-  }
-
-  while (nextStyleLines[0] === "") {
-    nextStyleLines = nextStyleLines.slice(1);
-  }
-
-  const nextStyleContents = `${nextStyleLines.join(styleLineEnding)}${styleLineEnding}`;
-
-  if (nextStyleContents !== styleFileContents) {
-    fs.writeFileSync(resolvedStylePath, nextStyleContents);
-  }
-
-  const brandStylesheetStatus = hasBrandStylesheet ? "Updated" : "Created";
-  const mainStylesheetStatus = nextStyleContents === styleFileContents ? "Kept" : "Updated";
-
-  return {
-    message: `${brandStylesheetStatus} ${path.relative(process.cwd(), brandStylesheetPath)} and ${mainStylesheetStatus.toLowerCase()} ${path.relative(process.cwd(), resolvedStylePath)} to import it.`
-  };
+function normalizeConfigPath(value: string) {
+  return value.replace(/\\/g, "/");
 }
 
-function resolveStylePath(stylePath: string | undefined) {
-  if (stylePath) {
-    const candidatePath = path.resolve(process.cwd(), stylePath);
+function buildGenerateCommand(options: SetupOptions) {
+  void options;
+  return "advantacode-brander";
+}
 
-    if (!fs.existsSync(candidatePath)) {
-      throw new Error(`Unable to find stylesheet "${stylePath}".`);
+function ensureBrandConfig(options?: {
+  outputDir: string;
+  styleFile?: string;
+  adapters?: string[];
+  formats?: SetupOptions["formats"];
+  prefix?: string;
+  theme?: SetupOptions["theme"];
+}) {
+  const existingConfigPath = findExistingBrandConfigPath();
+
+  if (existingConfigPath) {
+    return { message: `Kept existing ${path.basename(existingConfigPath)}.` };
+  }
+
+  const configPath = path.resolve(process.cwd(), "brand.config.ts");
+  fs.writeFileSync(configPath, getDefaultBrandConfigTemplate(options));
+  return { message: `Created ${path.basename(configPath)}.` };
+}
+
+function findExistingBrandConfigPath() {
+  const candidateFiles = [
+    "brand.config.ts",
+    "brand.config.mts",
+    "brand.config.cts",
+    "brand.config.js",
+    "brand.config.mjs",
+    "brand.config.cjs"
+  ];
+
+  for (const candidateFile of candidateFiles) {
+    const candidatePath = path.resolve(process.cwd(), candidateFile);
+    if (fs.existsSync(candidatePath)) {
+      return candidatePath;
     }
-
-    return candidatePath;
-  }
-
-  const existingCandidates = defaultStyleCandidates
-    .map((candidate) => path.resolve(process.cwd(), candidate))
-    .filter((candidatePath) => fs.existsSync(candidatePath));
-
-  if (existingCandidates.length === 1) {
-    return existingCandidates[0];
-  }
-
-  if (existingCandidates.length > 1) {
-    throw new Error(
-      `Multiple stylesheet candidates were found: ${existingCandidates
-        .map((candidatePath) => path.relative(process.cwd(), candidatePath))
-        .join(", ")}. Use --style <path> to choose one.`
-    );
   }
 
   return undefined;
 }
 
-function buildImportLine(stylePath: string, targetPath: string) {
-  const relativeImportPath = path.relative(path.dirname(stylePath), path.resolve(process.cwd(), targetPath)).replace(/\\/g, "/");
-  const normalizedImportPath = relativeImportPath.startsWith(".") ? relativeImportPath : `./${relativeImportPath}`;
+function getDefaultBrandConfigTemplate(options?: {
+  outputDir: string;
+  styleFile?: string;
+  adapters?: string[];
+  formats?: SetupOptions["formats"];
+  prefix?: string;
+  theme?: SetupOptions["theme"];
+}) {
+  const outDir = options?.outputDir ?? defaultSetupOutputDir;
+  const adapters = options?.adapters && options.adapters.length > 0 ? options.adapters : undefined;
+  const formats = options?.formats && options.formats.length > 0 ? options.formats : undefined;
+  const prefix = options?.prefix ? JSON.stringify(options.prefix) : "process.env.CSS_PREFIX ?? \"\"";
+  const themeLine = options?.theme && options.theme !== "both" ? `  theme: ${JSON.stringify(options.theme)},\n` : "";
 
-  return `@import '${normalizedImportPath}';`;
-}
+  const projectLines = [
+    `  project: {`,
+    `    outDir: ${JSON.stringify(outDir)},`,
+    ...(options?.styleFile ? [`    styleFile: ${JSON.stringify(options.styleFile)},`] : []),
+    `  },`
+  ].join("\n");
 
-function buildGenerateCommand(options: SetupOptions) {
-  const commandParts = ["advantacode-brander"];
-  const outputDir = options.outputDir ?? defaultSetupOutputDir;
-
-  commandParts.push("--out", outputDir);
-
-  if (options.formats && options.formats.length > 0) {
-    commandParts.push("--format", options.formats.join(","));
-  }
-
-  if (options.theme && options.theme !== "both") {
-    commandParts.push("--theme", options.theme);
-  }
-
-  if (options.prefix) {
-    commandParts.push("--prefix", options.prefix);
-  }
-
-  if (options.stylePath) {
-    commandParts.push("--style", options.stylePath);
-  }
-
-  return commandParts.join(" ");
-}
-
-function getDefaultBrandConfigTemplate() {
   return `export default {
   name: process.env.COMPANY_NAME || "My Company",
-  css: {
-    prefix: process.env.CSS_PREFIX ?? ""
+${projectLines}
+
+${themeLine}${formats ? `  formats: ${JSON.stringify(formats)},\n` : ""}${adapters ? `  adapters: ${JSON.stringify(adapters)},\n` : ""}  css: {
+    prefix: ${prefix}
   },
   colors: {
     primary: process.env.PRIMARY_COLOR || "amber-500",
@@ -252,6 +187,17 @@ function getDefaultBrandConfigTemplate() {
     success: process.env.SUCCESS_COLOR || "green-500",
     warning: process.env.WARNING_COLOR || "yellow-500",
     danger: process.env.DANGER_COLOR || "red-500"
+  },
+  typography: {
+    fontSans: "Inter",
+    fontMono: "JetBrains Mono"
+  },
+  spacing: {
+    xs: "0.25rem",
+    sm: "0.5rem",
+    md: "1rem",
+    lg: "1.5rem",
+    xl: "2rem"
   }
 };
 `;

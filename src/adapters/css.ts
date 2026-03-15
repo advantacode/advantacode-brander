@@ -46,6 +46,27 @@ function renderPrimitiveTokens(tokenModel: TokenModel, variableOptions: Variable
     }
   }
 
+  if (tokenModel.spacing && Object.keys(tokenModel.spacing).length > 0) {
+    css += "\n";
+    for (const [spaceName, spaceToken] of Object.entries(tokenModel.spacing)) {
+      css += `  ${getVariableName(`space-${spaceName}`, variableOptions)}: ${spaceToken.value};\n`;
+    }
+  }
+
+  if (tokenModel.typography) {
+    const fontSans = tokenModel.typography.fontSans?.value;
+    const fontMono = tokenModel.typography.fontMono?.value;
+    if (fontSans || fontMono) {
+      css += "\n";
+    }
+    if (fontSans) {
+      css += `  ${getVariableName("font-sans", variableOptions)}: ${fontSans};\n`;
+    }
+    if (fontMono) {
+      css += `  ${getVariableName("font-mono", variableOptions)}: ${fontMono};\n`;
+    }
+  }
+
   css += "}\n";
 
   return css;

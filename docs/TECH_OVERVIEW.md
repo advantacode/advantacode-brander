@@ -308,12 +308,18 @@ Type definitions for Culori.
 brand.config.ts
 ```
 
-Defines the user-provided color inputs.
+Defines the user-provided project settings and design tokens.
+Also supports `project` output settings, optional `adapters` / `formats`, and optional `typography` (fonts) + `spacing` scales.
 
 Example:
 
 ```ts
 export default {
+  project: {
+    outDir: "src/assets/brand",
+    styleFile: "src/styles.css"
+  },
+  adapters: ["tailwind"],
   css: {
     prefix: ""
   },
@@ -321,6 +327,17 @@ export default {
     primary: "amber-500",
     secondary: "zinc-700",
     info: "sky-500"
+  },
+  typography: {
+    fontSans: "Inter",
+    fontMono: "JetBrains Mono"
+  },
+  spacing: {
+    xs: "0.25rem",
+    sm: "0.5rem",
+    md: "1rem",
+    lg: "1.5rem",
+    xl: "2rem"
   }
 };
 ```
@@ -452,9 +469,25 @@ Example:
 export default {
   name: "My Company",
 
+  project: {
+    outDir: "src/assets/brand",
+    styleFile: "src/styles.css"
+  },
+  adapters: ["tailwind"],
   colors: {
     primary: "amber-500",
     secondary: "zinc-700"
+  },
+  typography: {
+    fontSans: "Inter",
+    fontMono: "JetBrains Mono"
+  },
+  spacing: {
+    xs: "0.25rem",
+    sm: "0.5rem",
+    md: "1rem",
+    lg: "1.5rem",
+    xl: "2rem"
   }
 }
 ```
@@ -520,6 +553,26 @@ The current test coverage includes:
 
 ---
 
+# Release and Publishing
+
+For v1.0.0, keep release mechanics intentionally simple and rely on a short manual checklist.
+
+Preflight checks:
+
+```
+npm run release:check
+```
+
+Recommended flow:
+
+* update `CHANGELOG.md`
+* run `npm run release:check`
+* bump version with `npm version patch|minor|major`
+* publish with `npm publish`
+* push the commit + tag
+
+---
+
 # Run Token Generator
 
 For local repository development, you can execute the generator directly with:
@@ -573,7 +626,7 @@ Add a script to the app:
 ```json
 {
   "scripts": {
-    "brand:generate": "advantacode-brander --out src/brander --format css,json,typescript --theme both"
+    "brand:generate": "advantacode-brander"
   }
 }
 ```
@@ -581,7 +634,7 @@ Add a script to the app:
 Or let Brander do that setup explicitly:
 
 ```
-npx --package @advantacode/brander advantacode-brander setup --out src/brander --style src/style.css
+npx --package @advantacode/brander advantacode-brander setup --style src/style.css
 ```
 
 That command:
