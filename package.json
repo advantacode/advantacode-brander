@@ -22,10 +22,14 @@
     "release:check": "npm run lint && npm test && npm pack --dry-run",
     "tokens": "tsx src/generate-tokens.ts",
     "prepack": "npm run build",
+    "changelog:cut": "node scripts/cut-changelog.mjs",
     "brand:generate": "advantacode-brander",
     "brand:test": "node ./dist/cli-wrapper.js"
   },
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "author": "Anthony Penn",
   "repository": {
     "type": "git",

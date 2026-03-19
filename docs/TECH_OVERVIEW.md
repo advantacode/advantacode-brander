@@ -568,6 +568,7 @@ Recommended flow:
 * update `CHANGELOG.md`
 * run `npm run release:check`
 * bump version with `npm version patch|minor|major`
+* cut the changelog section with `npm run changelog:cut` (uses the current `package.json` version)
 * publish with `npm publish`
 * push the commit + tag
 
@@ -606,6 +607,40 @@ Why `devDependency`:
 
 * Brander is a build-time code generation tool
 * the consuming app needs the generated token files at runtime, not the generator itself
+
+## Compatibility Test Matrix (v1.0.0)
+
+Keep v1.0.0 validation lean and focus on the integration points Brander actually owns:
+
+* config loading (`brand.config.ts` / `brand.config.js`)
+* writing outputs to `project.outDir`
+* CSS variable/theme correctness
+* `brand.css` wiring via `project.styleFile` (when applicable)
+* Tailwind preset adapter import + usage
+
+**Minimal matrix (recommended for v1):**
+
+1. Plain Vite + Tailwind (framework-agnostic baseline)
+2. Next.js + Tailwind (SSR + App Router + CSS import realities)
+3. Nuxt + Tailwind (Vue SSR ecosystem)
+4. One Vite SPA framework: Vue + Tailwind *or* React + Tailwind (framework independence)
+
+**Optional (adds credibility, not required for v1):**
+
+* Astro + Tailwind (marketing sites)
+* Laravel + Vite + Tailwind (monolith stack)
+* SvelteKit + Tailwind (non-React/Vue framework)
+
+**Notes:**
+
+* For Next.js/Nuxt/Astro you may prefer to skip `setup` import patching and wire `brand.css` manually in the framework’s global stylesheet entrypoint; still validate `generate` and token consumption.
+* Vite + Next.js covers the majority of real-world build tooling for Brander’s outputs.
+
+Automation (optional):
+
+* GitHub Actions workflow: `.github/workflows/consumer-matrix.yml`
+* Script used by the workflow: `scripts/consumer-smoke.sh`
+* The workflow packs the current commit (`npm pack`) and installs Brander from that tarball in each consumer project to avoid npm-registry drift.
 
 Build and pack Brander:
 
@@ -762,24 +797,32 @@ The project compiles TypeScript using:
 
 # CLI Entry Point
 
-The source CLI entry point lives at:
+The source executable wrapper lives at:
+
+```
+src/cli-wrapper.ts
+```
+
+It uses this executable header:
+
+```ts
+#!/usr/bin/env node
+```
+
+CLI parsing and command behavior live in:
 
 ```
 src/index.ts
 ```
 
-It uses this executable header during development:
+TypeScript config support is enabled at runtime by dynamically loading `tsx/esm` when a `brand.config.ts` is detected.
 
-```ts
-#!/usr/bin/env -S node --import tsx/esm
-```
-
-The published binary entry in `package.json` points to the compiled output:
+The published binary entry in `package.json` points to the compiled wrapper:
 
 ```json
 {
   "bin": {
-    "advantacode-brander": "./dist/index.js"
+    "advantacode-brander": "./dist/cli-wrapper.js"
   }
 }
 ```
