@@ -1,5 +1,7 @@
 # AdvantaCode Brander
 
+[![npm](https://img.shields.io/npm/v/@advantacode/brander)](https://www.npmjs.com/package/@advantacode/brander)
+
 AdvantaCode Brander is a design token generator that produces consistent branding tokens for modern web applications.
 
 It converts a simple configuration into reusable outputs for multiple platforms including:
@@ -16,13 +18,13 @@ AdvantaCode Brander uses OKLCH color space to generate perceptually consistent c
 
 ```bash
 npm install -D @advantacode/brander
-npx --package @advantacode/brander advantacode-brander setup --out src/brander --style src/style.css
+npx --package @advantacode/brander advantacode-brander setup --style src/style.css
 ```
 
 This creates `brand.config.ts`, adds a `brand:generate` script, patches your stylesheet imports, and prepares the token output folder.
 
 During setup, Brander creates `brand.css` next to your main stylesheet, writes token/theme imports there, and adds a single `@import './brand.css';` to your main stylesheet.
-The generated `brand:generate` script preserves the setup generation flags you used, including `--out` and `--style`, so repeat runs keep writing to the same target and refresh the stylesheet wiring when needed.
+Brander stores project paths like `project.outDir` and `project.styleFile` in `brand.config.*` so your `brand:generate` script can stay minimal.
 
 AdvantaCode Brander generates design tokens and framework adapters from a single brand configuration file. It allows applications, design systems, and design tools to share a consistent source of truth for colors and semantic tokens.
 
@@ -77,17 +79,17 @@ advantacode-brander --out src/tokens
 advantacode-brander --format css,tailwind,figma
 advantacode-brander --theme dark
 advantacode-brander --prefix ac
-advantacode-brander setup --out src/brander --style src/style.css
+advantacode-brander setup --style src/style.css
 advantacode-brander init --out src/brander
 ```
 
-Supported flags:
+Supported flags (CLI overrides `brand.config.*`):
 
-* `--out <dir>` writes generated files to a custom folder instead of `dist/brander`
+* `--out <dir>` writes generated files to a custom folder instead of `dist/brander` (or `project.outDir`)
 * `--format <list>` limits output to specific formats: `all`, `css`, `json`, `typescript` or `ts`, `scss`, `tailwind`, `bootstrap`, `figma`
-* `--theme <value>` limits theme CSS output to `light`, `dark`, or `both`
-* `--prefix <value>` applies a CSS variable prefix like `ac`, producing variables such as `--ac-primary`
-* `--style <path>` refreshes `brand.css` and the main stylesheet import during normal generation so package scripts can keep setup paths aligned
+* `--theme <value>` limits theme CSS output to `light`, `dark`, or `both` (or `theme`)
+* `--prefix <value>` applies a CSS variable prefix like `ac`, producing variables such as `--ac-primary` (or `css.prefix`)
+* `--style <path>` refreshes `brand.css` and the main stylesheet import during normal generation (or `project.styleFile`)
 * `--version`, `-v` prints the installed package version
 * `--help`, `-h` prints the CLI help text
 
@@ -105,6 +107,12 @@ Example:
 ```ts
 export default {
   name: process.env.COMPANY_NAME || "My Company",
+  project: {
+    outDir: "src/assets/brand",
+    styleFile: "src/styles.css"
+  },
+
+  adapters: ["tailwind"],
   css: {
     prefix: process.env.CSS_PREFIX ?? ""
   },
@@ -118,6 +126,19 @@ export default {
     success: process.env.SUCCESS_COLOR || "green-500",
     warning: process.env.WARNING_COLOR || "yellow-500",
     danger: process.env.DANGER_COLOR || "red-500"
+  },
+
+  typography: {
+    fontSans: "Inter",
+    fontMono: "JetBrains Mono"
+  },
+
+  spacing: {
+    xs: "0.25rem",
+    sm: "0.5rem",
+    md: "1rem",
+    lg: "1.5rem",
+    xl: "2rem"
   }
 };
 ```
@@ -149,7 +170,7 @@ DANGER_COLOR=red-500
 
 ## Generated Outputs
 
-Running the CLI with no flags generates all formats into `dist/brander` and writes both light and dark theme CSS.
+If neither CLI `--format` nor `formats` / `adapters` are set in `brand.config.*`, running the CLI with no flags generates all formats into `dist/brander` and writes both light and dark theme CSS.
 
 ```text
 dist/
@@ -176,6 +197,8 @@ Example generated `tokens.css`:
 :root {
   --primary-500: oklch(0.65 0.2 45);
   --neutral-50: oklch(0.97 0.02 95);
+  --space-md: 1rem;
+  --font-sans: "Inter", sans-serif;
 }
 ```
 
@@ -371,6 +394,8 @@ This allows developers to bootstrap fully branded applications with a single com
 AdvantaCode Brander is maintained under a closed governance model.
 
 Issues and feature requests are welcome, but pull requests may not be accepted.
+
+Maintainer release and publishing workflow documentation is in [docs/TECH_OVERVIEW.md](docs/TECH_OVERVIEW.md).
 
 See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) for details.
 

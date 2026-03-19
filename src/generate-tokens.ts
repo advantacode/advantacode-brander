@@ -11,6 +11,7 @@ import { writeTypeScriptArtifacts } from "./adapters/typescript.js";
 import { normalizeVariablePrefix } from "./adapters/variables.js";
 import { baseColorNames, resolveBaseColors, type PartialBaseColors } from "./engine/color-parser.js";
 import { createTokenModel } from "./engine/themes.js";
+import { syncStyleImports } from "./style-imports.js";
 
 export const supportedFormats = [
   "all",
@@ -30,28 +31,43 @@ export type GenerationOptions = {
   formats?: OutputFormat[];
   theme?: ThemeSelection;
   prefix?: string;
+  stylePath?: string;
 };
 
 type BrandConfig = {
   name?: string;
+  project?: {
+    outDir?: string;
+    styleFile?: string;
+  };
+  adapters?: Array<"tailwind" | "bootstrap" | "figma">;
+  formats?: OutputFormat[];
+  theme?: ThemeSelection;
   colors?: PartialBaseColors;
   css?: {
     prefix?: string;
   };
+  typography?: {
+    fontSans?: string;
+    fontMono?: string;
+  };
+  spacing?: Record<string, string>;
 };
 
 export async function generateTokens(options: GenerationOptions = {}) {
-  const defaultOutputDir = resolveDefaultOutputDir();
-  const outputDir = options.outputDir ? path.resolve(process.cwd(), options.outputDir) : defaultOutputDir;
-  const theme = options.theme ?? "both";
-  const formats = resolveFormats(options.formats);
-
   loadDotEnv({ path: path.resolve(process.cwd(), ".env"), quiet: true });
 
   const brandConfig = await loadBrandConfig();
+  const defaultOutputDir = resolveDefaultOutputDir();
+  const outputDir = resolveOutputDir(options.outputDir, brandConfig.project?.outDir, defaultOutputDir);
+  const theme = options.theme ?? brandConfig.theme ?? "both";
+  const formats = resolveFormats(options.formats ?? brandConfig.formats ?? resolveFormatsFromAdapters(brandConfig.adapters));
   const prefix = resolveCssPrefix(options.prefix, brandConfig.css?.prefix, process.env.CSS_PREFIX);
   const baseColors = resolveBaseColors(brandConfig.colors ?? {});
-  const tokenModel = createTokenModel(baseColors);
+  const tokenModel = createTokenModel(baseColors, {
+    typography: resolveTypographyConfig(brandConfig.typography),
+    spacing: brandConfig.spacing
+  });
 
   fs.mkdirSync(outputDir, { recursive: true });
 
@@ -105,6 +121,11 @@ export async function generateTokens(options: GenerationOptions = {}) {
   }
 
   writtenArtifacts.push(...writeMetadataJson(outputDir, metadata));
+
+  const stylePath = options.stylePath ?? brandConfig.project?.styleFile;
+  if (stylePath && formats.has("css")) {
+    syncStyleImports(stylePath, outputDir, theme);
+  }
 
   console.log(`✔ AdvantaCode tokens generated in ${path.relative(process.cwd(), outputDir) || "."}!`);
 }
@@ -167,6 +188,87 @@ function parseBrandConfig(rawConfig: unknown, configPath: string): BrandConfig {
     parsedConfig.name = config.name;
   }
 
+  if ("project" in config && config.project !== undefined) {
+    if (typeof config.project !== "object" || config.project === null || Array.isArray(config.project)) {
+      throw new Error(`Expected "project" in ${path.basename(configPath)} to be an object.`);
+    }
+
+    const projectConfig = config.project as Record<string, unknown>;
+    const parsedProjectConfig: NonNullable<BrandConfig["project"]> = {};
+
+    if ("outDir" in projectConfig && projectConfig.outDir !== undefined) {
+      if (typeof projectConfig.outDir !== "string") {
+        throw new Error(`Expected "project.outDir" in ${path.basename(configPath)} to be a string.`);
+      }
+      parsedProjectConfig.outDir = projectConfig.outDir;
+    }
+
+    if ("styleFile" in projectConfig && projectConfig.styleFile !== undefined) {
+      if (typeof projectConfig.styleFile !== "string") {
+        throw new Error(`Expected "project.styleFile" in ${path.basename(configPath)} to be a string.`);
+      }
+      parsedProjectConfig.styleFile = projectConfig.styleFile;
+    }
+
+    parsedConfig.project = parsedProjectConfig;
+  }
+
+  if ("adapters" in config && config.adapters !== undefined) {
+    if (!Array.isArray(config.adapters)) {
+      throw new Error(`Expected "adapters" in ${path.basename(configPath)} to be an array.`);
+    }
+
+    const parsedAdapters: NonNullable<BrandConfig["adapters"]> = [];
+
+    for (const adapter of config.adapters) {
+      if (typeof adapter !== "string") {
+        throw new Error(`Expected "adapters" entries in ${path.basename(configPath)} to be strings.`);
+      }
+
+      if (!["tailwind", "bootstrap", "figma"].includes(adapter)) {
+        throw new Error(`Unsupported adapter "${adapter}" in ${path.basename(configPath)}.`);
+      }
+
+      parsedAdapters.push(adapter as NonNullable<BrandConfig["adapters"]>[number]);
+    }
+
+    parsedConfig.adapters = parsedAdapters;
+  }
+
+  if ("formats" in config && config.formats !== undefined) {
+    if (!Array.isArray(config.formats)) {
+      throw new Error(`Expected "formats" in ${path.basename(configPath)} to be an array.`);
+    }
+
+    const parsedFormats: OutputFormat[] = [];
+
+    for (const format of config.formats) {
+      if (typeof format !== "string") {
+        throw new Error(`Expected "formats" entries in ${path.basename(configPath)} to be strings.`);
+      }
+
+      if (!supportedFormats.includes(format as OutputFormat)) {
+        throw new Error(`Unknown format "${format}" in ${path.basename(configPath)}.`);
+      }
+
+      parsedFormats.push(format as OutputFormat);
+    }
+
+    parsedConfig.formats = parsedFormats;
+  }
+
+  if ("theme" in config && config.theme !== undefined) {
+    if (typeof config.theme !== "string") {
+      throw new Error(`Expected "theme" in ${path.basename(configPath)} to be a string.`);
+    }
+
+    if (!["light", "dark", "both"].includes(config.theme)) {
+      throw new Error(`Invalid "theme" in ${path.basename(configPath)}. Use "light", "dark", or "both".`);
+    }
+
+    parsedConfig.theme = config.theme as ThemeSelection;
+  }
+
   if ("colors" in config && config.colors !== undefined) {
     if (typeof config.colors !== "object" || config.colors === null || Array.isArray(config.colors)) {
       throw new Error(`Expected "colors" in ${path.basename(configPath)} to be an object.`);
@@ -209,7 +311,119 @@ function parseBrandConfig(rawConfig: unknown, configPath: string): BrandConfig {
     parsedConfig.css = parsedCssConfig;
   }
 
+  if ("typography" in config && config.typography !== undefined) {
+    if (typeof config.typography !== "object" || config.typography === null || Array.isArray(config.typography)) {
+      throw new Error(`Expected "typography" in ${path.basename(configPath)} to be an object.`);
+    }
+
+    const typographyConfig = config.typography as Record<string, unknown>;
+    const parsedTypographyConfig: NonNullable<BrandConfig["typography"]> = {};
+
+    if ("fontSans" in typographyConfig && typographyConfig.fontSans !== undefined) {
+      if (typeof typographyConfig.fontSans !== "string") {
+        throw new Error(`Expected "typography.fontSans" in ${path.basename(configPath)} to be a string.`);
+      }
+
+      parsedTypographyConfig.fontSans = typographyConfig.fontSans;
+    }
+
+    if ("fontMono" in typographyConfig && typographyConfig.fontMono !== undefined) {
+      if (typeof typographyConfig.fontMono !== "string") {
+        throw new Error(`Expected "typography.fontMono" in ${path.basename(configPath)} to be a string.`);
+      }
+
+      parsedTypographyConfig.fontMono = typographyConfig.fontMono;
+    }
+
+    parsedConfig.typography = parsedTypographyConfig;
+  }
+
+  if ("spacing" in config && config.spacing !== undefined) {
+    if (typeof config.spacing !== "object" || config.spacing === null || Array.isArray(config.spacing)) {
+      throw new Error(`Expected "spacing" in ${path.basename(configPath)} to be an object.`);
+    }
+
+    const spacingEntries = Object.entries(config.spacing as Record<string, unknown>);
+    const parsedSpacing: NonNullable<BrandConfig["spacing"]> = {};
+
+    for (const [spaceName, spaceValue] of spacingEntries) {
+      if (!isSafeTokenKey(spaceName)) {
+        throw new Error(
+          `Unsupported spacing token "${spaceName}" in ${path.basename(configPath)}. Use letters, numbers, ".", "_", or "-".`
+        );
+      }
+
+      if (typeof spaceValue !== "string") {
+        throw new Error(`Expected spacing "${spaceName}" in ${path.basename(configPath)} to be a string.`);
+      }
+
+      parsedSpacing[spaceName] = spaceValue;
+    }
+
+    parsedConfig.spacing = parsedSpacing;
+  }
+
   return parsedConfig;
+}
+
+function isSafeTokenKey(value: string) {
+  return /^[A-Za-z0-9._-]+$/.test(value);
+}
+
+const genericFontFamilyKeywords = new Set([
+  "serif",
+  "sans-serif",
+  "monospace",
+  "cursive",
+  "fantasy",
+  "system-ui",
+  "ui-serif",
+  "ui-sans-serif",
+  "ui-monospace",
+  "ui-rounded",
+  "emoji",
+  "math",
+  "fangsong"
+]);
+
+function resolveTypographyConfig(config: BrandConfig["typography"] | undefined) {
+  if (!config) {
+    return undefined;
+  }
+
+  const resolved: NonNullable<BrandConfig["typography"]> = {};
+
+  if (typeof config.fontSans === "string" && config.fontSans.trim()) {
+    resolved.fontSans = normalizeFontStack(config.fontSans, "sans-serif");
+  }
+
+  if (typeof config.fontMono === "string" && config.fontMono.trim()) {
+    resolved.fontMono = normalizeFontStack(config.fontMono, "monospace");
+  }
+
+  return Object.keys(resolved).length > 0 ? resolved : undefined;
+}
+
+function normalizeFontStack(fontValue: string, fallback: "sans-serif" | "monospace") {
+  const trimmed = fontValue.trim();
+
+  if (!trimmed) {
+    return trimmed;
+  }
+
+  if (trimmed.includes(",")) {
+    return trimmed;
+  }
+
+  if (genericFontFamilyKeywords.has(trimmed)) {
+    return trimmed;
+  }
+
+  return `"${escapeCssString(trimmed)}", ${fallback}`;
+}
+
+function escapeCssString(value: string) {
+  return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }
 
 function resolveFormats(formats: OutputFormat[] | undefined) {
@@ -236,6 +450,19 @@ function resolveFormats(formats: OutputFormat[] | undefined) {
   }
 
   return resolvedFormats;
+}
+
+function resolveFormatsFromAdapters(adapters: BrandConfig["adapters"] | undefined) {
+  if (!adapters || adapters.length === 0) {
+    return undefined;
+  }
+
+  return ["css", ...adapters] as OutputFormat[];
+}
+
+function resolveOutputDir(cliOutDir: string | undefined, configOutDir: string | undefined, defaultOutputDir: string) {
+  const resolvedOutDir = cliOutDir ?? configOutDir;
+  return resolvedOutDir ? path.resolve(process.cwd(), resolvedOutDir) : defaultOutputDir;
 }
 
 function removeLegacyGeneratedFiles() {

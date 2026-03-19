@@ -308,12 +308,18 @@ Type definitions for Culori.
 brand.config.ts
 ```
 
-Defines the user-provided color inputs.
+Defines the user-provided project settings and design tokens.
+Also supports `project` output settings, optional `adapters` / `formats`, and optional `typography` (fonts) + `spacing` scales.
 
 Example:
 
 ```ts
 export default {
+  project: {
+    outDir: "src/assets/brand",
+    styleFile: "src/styles.css"
+  },
+  adapters: ["tailwind"],
   css: {
     prefix: ""
   },
@@ -321,6 +327,17 @@ export default {
     primary: "amber-500",
     secondary: "zinc-700",
     info: "sky-500"
+  },
+  typography: {
+    fontSans: "Inter",
+    fontMono: "JetBrains Mono"
+  },
+  spacing: {
+    xs: "0.25rem",
+    sm: "0.5rem",
+    md: "1rem",
+    lg: "1.5rem",
+    xl: "2rem"
   }
 };
 ```
@@ -452,9 +469,25 @@ Example:
 export default {
   name: "My Company",
 
+  project: {
+    outDir: "src/assets/brand",
+    styleFile: "src/styles.css"
+  },
+  adapters: ["tailwind"],
   colors: {
     primary: "amber-500",
     secondary: "zinc-700"
+  },
+  typography: {
+    fontSans: "Inter",
+    fontMono: "JetBrains Mono"
+  },
+  spacing: {
+    xs: "0.25rem",
+    sm: "0.5rem",
+    md: "1rem",
+    lg: "1.5rem",
+    xl: "2rem"
   }
 }
 ```
@@ -520,6 +553,27 @@ The current test coverage includes:
 
 ---
 
+# Release and Publishing
+
+For v1.0.0, keep release mechanics intentionally simple and rely on a short manual checklist.
+
+Preflight checks:
+
+```
+npm run release:check
+```
+
+Recommended flow:
+
+* update `CHANGELOG.md`
+* run `npm run release:check`
+* bump version with `npm version patch|minor|major`
+* cut the changelog section with `npm run changelog:cut` (uses the current `package.json` version)
+* publish with `npm publish`
+* push the commit + tag
+
+---
+
 # Run Token Generator
 
 For local repository development, you can execute the generator directly with:
@@ -554,6 +608,40 @@ Why `devDependency`:
 * Brander is a build-time code generation tool
 * the consuming app needs the generated token files at runtime, not the generator itself
 
+## Compatibility Test Matrix (v1.0.0)
+
+Keep v1.0.0 validation lean and focus on the integration points Brander actually owns:
+
+* config loading (`brand.config.ts` / `brand.config.js`)
+* writing outputs to `project.outDir`
+* CSS variable/theme correctness
+* `brand.css` wiring via `project.styleFile` (when applicable)
+* Tailwind preset adapter import + usage
+
+**Minimal matrix (recommended for v1):**
+
+1. Plain Vite + Tailwind (framework-agnostic baseline)
+2. Next.js + Tailwind (SSR + App Router + CSS import realities)
+3. Nuxt + Tailwind (Vue SSR ecosystem)
+4. One Vite SPA framework: Vue + Tailwind *or* React + Tailwind (framework independence)
+
+**Optional (adds credibility, not required for v1):**
+
+* Astro + Tailwind (marketing sites)
+* Laravel + Vite + Tailwind (monolith stack)
+* SvelteKit + Tailwind (non-React/Vue framework)
+
+**Notes:**
+
+* For Next.js/Nuxt/Astro you may prefer to skip `setup` import patching and wire `brand.css` manually in the framework’s global stylesheet entrypoint; still validate `generate` and token consumption.
+* Vite + Next.js covers the majority of real-world build tooling for Brander’s outputs.
+
+Automation (optional):
+
+* GitHub Actions workflow: `.github/workflows/consumer-matrix.yml`
+* Script used by the workflow: `scripts/consumer-smoke.sh`
+* The workflow packs the current commit (`npm pack`) and installs Brander from that tarball in each consumer project to avoid npm-registry drift.
+
 Build and pack Brander:
 
 ```
@@ -573,7 +661,7 @@ Add a script to the app:
 ```json
 {
   "scripts": {
-    "brand:generate": "advantacode-brander --out src/brander --format css,json,typescript --theme both"
+    "brand:generate": "advantacode-brander"
   }
 }
 ```
@@ -581,7 +669,7 @@ Add a script to the app:
 Or let Brander do that setup explicitly:
 
 ```
-npx --package @advantacode/brander advantacode-brander setup --out src/brander --style src/style.css
+npx --package @advantacode/brander advantacode-brander setup --style src/style.css
 ```
 
 That command:
@@ -709,24 +797,32 @@ The project compiles TypeScript using:
 
 # CLI Entry Point
 
-The source CLI entry point lives at:
+The source executable wrapper lives at:
+
+```
+src/cli-wrapper.ts
+```
+
+It uses this executable header:
+
+```ts
+#!/usr/bin/env node
+```
+
+CLI parsing and command behavior live in:
 
 ```
 src/index.ts
 ```
 
-It uses this executable header during development:
+TypeScript config support is enabled at runtime by dynamically loading `tsx/esm` when a `brand.config.ts` is detected.
 
-```ts
-#!/usr/bin/env -S node --import tsx/esm
-```
-
-The published binary entry in `package.json` points to the compiled output:
+The published binary entry in `package.json` points to the compiled wrapper:
 
 ```json
 {
   "bin": {
-    "advantacode-brander": "./dist/index.js"
+    "advantacode-brander": "./dist/cli-wrapper.js"
   }
 }
 ```

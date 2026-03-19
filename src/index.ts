@@ -1,10 +1,8 @@
 import fs from 'fs';
-import path from 'path';
 import { generateTokens, supportedFormats, type GenerationOptions, type OutputFormat } from './generate-tokens.js';
-import { setupProject, syncStyleImports, type SetupOptions } from './setup.js';
+import { setupProject, type SetupOptions } from './setup.js';
 
 type GenerateCommandOptions = GenerationOptions & {
-  stylePath?: string;
 };
 
 export async function runCli(args: string[]): Promise<number> {
@@ -61,10 +59,6 @@ function resolveCommand(args: string[]) {
 
 async function runGenerateCommand(options: GenerateCommandOptions) {
   await generateTokens(options);
-
-  if (options.stylePath) {
-    syncStyleImports(options.stylePath, options.outputDir ?? path.join('dist', 'brander'));
-  }
 }
 
 function parseGenerateArgs(args: string[]): GenerateCommandOptions {
@@ -250,8 +244,8 @@ Options:
 Examples:
   advantacode-brander
   advantacode-brander --out src/tokens
-  advantacode-brander --out src/brander --style src/style.css
-  advantacode-brander setup --out src/brander --style src/style.css
+  advantacode-brander --style src/style.css
+  advantacode-brander setup --style src/style.css
   advantacode-brander init --out resources/brander --skip-imports
 `;
 }

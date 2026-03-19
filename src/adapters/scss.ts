@@ -53,6 +53,27 @@ function renderTokensScss(tokenModel: TokenModel, variableOptions: VariableOptio
     }
   }
 
+  if (tokenModel.spacing && Object.keys(tokenModel.spacing).length > 0) {
+    scss += "\n";
+    for (const [spaceName, spaceToken] of Object.entries(tokenModel.spacing)) {
+      scss += `${getSassVariableName(`space-${spaceName}`, variableOptions)}: ${spaceToken.value};\n`;
+    }
+  }
+
+  if (tokenModel.typography) {
+    const fontSans = tokenModel.typography.fontSans?.value;
+    const fontMono = tokenModel.typography.fontMono?.value;
+    if (fontSans || fontMono) {
+      scss += "\n";
+    }
+    if (fontSans) {
+      scss += `${getSassVariableName("font-sans", variableOptions)}: ${fontSans};\n`;
+    }
+    if (fontMono) {
+      scss += `${getSassVariableName("font-mono", variableOptions)}: ${fontMono};\n`;
+    }
+  }
+
   scss += "\n";
 
   for (const semanticTokenName of semanticTokenNames) {
