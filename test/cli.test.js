@@ -101,6 +101,48 @@ test("generates requested artifacts into the default brander folder", async (t) 
   assert.deepEqual([...metadata.artifacts].sort(), metadata.artifacts);
 });
 
+test("emits spacing and typography variables from brand.config", async (t) => {
+  const projectDir = createTempProject(t, {
+    "brand.config.js": `export default {
+  css: { prefix: "ac" },
+  colors: {
+    primary: "blue-500",
+    secondary: "zinc-700"
+  },
+  typography: {
+    fontSans: "Inter",
+    fontMono: "JetBrains Mono"
+  },
+  spacing: {
+    md: "1rem",
+    xl: "2rem"
+  }
+};
+`
+  });
+
+  const result = await captureCliRun(["--format", "css,tailwind", "--theme", "light"], projectDir);
+
+  assert.equal(result.exitCode, 0, result.stderr);
+
+  const tokensCss = fs.readFileSync(path.join(projectDir, "dist", "brander", "tokens.css"), "utf8");
+  const tailwindPreset = fs.readFileSync(
+    path.join(projectDir, "dist", "brander", "adapters", "tailwind.preset.ts"),
+    "utf8"
+  );
+
+  assert.match(tokensCss, /--ac-space-md:\s*1rem;/);
+  assert.match(tokensCss, /--ac-space-xl:\s*2rem;/);
+  assert.match(tokensCss, /--ac-font-sans:\s*"Inter",\s*sans-serif;/);
+  assert.match(tokensCss, /--ac-font-mono:\s*"JetBrains Mono",\s*monospace;/);
+
+  assert.match(tailwindPreset, /spacing:\s*\{/);
+  assert.match(tailwindPreset, /"md":\s*"var\(--ac-space-md\)"/);
+  assert.match(tailwindPreset, /fontFamily:\s*\{/);
+  assert.match(tailwindPreset, /"sans":\s*\["var\(--ac-font-sans\)"\]/);
+  assert.match(tailwindPreset, /"mono":\s*\["var\(--ac-font-mono\)"\]/);
+});
+
 test("setup uses the default src/brander output, adds a script, creates brand.css, and patches the stylesheet", async (t) => {
   const projectDir = createTempProject(t, {
     "package.json": JSON.stringify({ name: "sample-app", private: true, scripts: {} }, null, 2),
@@ -115,8 +157,8 @@ test("setup uses the default src/brander output, adds a script, creates brand.cs
   const brandCss = fs.readFileSync(path.join(projectDir, "src", "brand.css"), "utf8");
   const styleCss = fs.readFileSync(path.join(projectDir, "src", "style.css"), "utf8");
 
-  assert.equal(packageJson.scripts["brand:generate"], "advantacode-brander --out src/brander --style src/style.css");
-  assert.ok(fs.existsSync(path.join(projectDir, "brand.config.js")));
+  assert.equal(packageJson.scripts["brand:generate"], "advantacode-brander");
+  assert.ok(fs.existsSync(path.join(projectDir, "brand.config.ts")));
   assert.match(styleCss, /@import '\.\/brand\.css';/);
   assert.match(brandCss, /@import '\.\/brander\/tokens\.css';/);
   assert.match(brandCss, /@import '\.\/brander\/themes\/light\.css';/);
@@ -141,6 +183,40 @@ test("generate supports --style so repeated runs keep stylesheet wiring aligned"
   assert.match(brandCss, /@import '\.\/assets\/brander\/tokens\.css';/);
   assert.match(brandCss, /@import '\.\/assets\/brander\/themes\/light\.css';/);
   assert.match(brandCss, /@import '\.\/assets\/brander\/themes\/dark\.css';/);
+});
+
+test("loads a TypeScript brand.config.ts and uses its project defaults", async (t) => {
+  const projectDir = createTempProject(t, {
+    "brand.config.ts": `export default {
+  project: {
+    outDir: "src/assets/brand",
+    styleFile: "src/style.css"
+  },
+  theme: "light",
+  formats: ["css"],
+  colors: {
+    primary: "blue-500",
+    secondary: "zinc-700"
+  }
+};
+`,
+    "src/style.css": "body { color: inherit; }\n"
+  });
+
+  const result = await captureCliRun([], projectDir);
+
+  assert.equal(result.exitCode, 0, result.stderr);
+  assert.ok(fs.existsSync(path.join(projectDir, "src", "assets", "brand", "tokens.css")));
+  assert.ok(fs.existsSync(path.join(projectDir, "src", "assets", "brand", "themes", "light.css")));
+  assert.ok(!fs.existsSync(path.join(projectDir, "src", "assets", "brand", "themes", "dark.css")));
+
+  const brandCss = fs.readFileSync(path.join(projectDir, "src", "brand.css"), "utf8");
+  const styleCss = fs.readFileSync(path.join(projectDir, "src", "style.css"), "utf8");
+
+  assert.match(styleCss, /@import '\.\/brand\.css';/);
+  assert.match(brandCss, /@import '\.\/assets\/brand\/tokens\.css';/);
+  assert.match(brandCss, /@import '\.\/assets\/brand\/themes\/light\.css';/);
+  assert.doesNotMatch(brandCss, /themes\/dark\.css/);
 });
 
 test("reports invalid config errors without a stack trace", async (t) => {

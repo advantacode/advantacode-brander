@@ -34,6 +34,10 @@ For internal architecture and technical details, see:
 
 [TECH_OVERVIEW.md](TECH_OVERVIEW.md)
 
+## Changelog
+
+User-facing changes should be recorded in `CHANGELOG.md` under the `[Unreleased]` section.
+
 ## Branding and Trademarks
 
 Use of the AdvantaCode name, logos, package names, domains, and other brand identifiers is governed by the trademark policy.
